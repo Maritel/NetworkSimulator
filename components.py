@@ -26,8 +26,10 @@ class Flow(object):
         self.amount = amount # bits
 
 class Packet(object):
-    def __init__(self, i, message_type, size):
+    def __init__(self, i, source, destination, message_type, size):
         self.i = i
+        self.source = source
+        self.destination = destination
         self.message_type = message_type
         self.size = size # bits
 
