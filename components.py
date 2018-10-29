@@ -9,11 +9,14 @@ class Router(object):
         self.table = table
 
 class Link(object):
-    def __init__(self, i, rate, delay, buffer_size):
+    def __init__(self, i, end1, end2, rate, delay, buf_size):
         self.i = i
+        # Routers and hosts
+        self.end1 = end1
+        self.end2 = end2
         self.rate = rate # bits per second
         self.delay = delay # seconds
-        self.buffer_size = buffer_size # bits
+        self.buf_size = buf_size # bits
 
 class Flow(object):
     def __init__(self, i, source, destination, amount):
@@ -27,3 +30,4 @@ class Packet(object):
         self.i = i
         self.message_type = message_type
         self.size = size # bits
+
