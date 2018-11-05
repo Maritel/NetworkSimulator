@@ -42,7 +42,18 @@ class Router(object):
         self.links = []  # links that this router can access
 
     def on_packet_reception(self, t, p):
-        pass
+        if self.debug:
+            print("t={}: {}: packet received: {}".
+                  format(round(t, 6), self.i, p))
+        #assume self.table is table[destID] = linkID
+        #assume routing is instantaneous
+        #silently fail
+        nextLink = self.links[self.table[p.destination.id]]
+        try:
+            self.em.enqueue(LinkEntry(t, nextLink, p))
+            return True
+        except:
+            return False
 
 
 class Link(object):
