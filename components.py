@@ -8,6 +8,11 @@ class Host(object):
         self.i = i  # string ID; unique for all components
         self.link = None  # link that this host can access
         self.debug = debug
+    
+    def add_link(self, link):
+        if self.link is not None:
+            raise ValueError('Link already added')
+        self.link = link
 
     def on_packet_reception(self, t, p):
         if self.debug:
@@ -40,6 +45,9 @@ class Router(object):
         # Routing table for routers
         self.table = table  # dict(ID -> ID)
         self.links = []  # links that this router can access
+
+    def add_link(self, link):
+        self.links.append(link)
 
     def on_packet_reception(self, t, p):
         if self.debug:
