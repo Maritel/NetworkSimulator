@@ -58,7 +58,7 @@ class Router(object):
         #silently fail
         nextLink = self.links[self.table[p.destination.id]]
         try:
-            self.em.enqueue(LinkEntry(t, nextLink, p))
+            nextLink.on_packet_entry(t, self.i, p)
             return True
         except:
             return False
