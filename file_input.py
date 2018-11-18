@@ -18,7 +18,8 @@ def read_network(filename, event_manager):
     for r in j.get('routers', []):
         i = r['id']
         assert i not in endpts, 'Endpoint with id %s already exists' % i
-        endpts[i] = Router(event_manager, i)
+        table = r['table']
+        endpts[i] = Router(event_manager, i, table=table)
     for l in j.get('links', []):
         i = l['id']
         end_a = endpts[l['end_a']]
