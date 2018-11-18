@@ -75,11 +75,16 @@ class Link(object):
         self.rate = rate  # bits per second
         self.delay = delay  # seconds
 
+        self.queue_connected = True #queue connected to link?
         self.free = True  # currently unused? Buffer packets count as use.
         self.buffer = queue.Queue()
         self.buffer_usage = 0
         self.buffer_capacity = buffer_capacity  # bits
 
+    def disrupt(self, connect=False):
+        #simulate a physical link cut
+        self.queue_connected = connect
+    
     def on_packet_entry(self, t, entry_component, p):
         if self.debug:
             print("t={}: {}: packet entered from {}, packet details: {}".
@@ -87,6 +92,9 @@ class Link(object):
 
         exit_end = 1 if entry_component == self.ends[0] else 0
 
+        #make sure buffer is still attached to queue
+        assert self.queue_connected
+        
         if self.free:
             traversal_time = self.delay + p.size / self.rate
             self.free = False
@@ -100,12 +108,16 @@ class Link(object):
                       format(self.i, p.i, exit_end))
             self.buffer_usage += p.size
 
+            
     def on_packet_exit(self, t, exit_end, exiting_packet):
         if self.debug:
             print("t={}: {}: packet exited from end {}, packet details: {}".
                   format(round(t, 6), self.i, exit_end, exiting_packet))
 
+        #make sure buffer is still attached to link
+        assert self.queue_connected
         assert not self.free
+        
         if self.buffer_usage == 0:
             self.free = True
         else:
