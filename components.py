@@ -76,26 +76,25 @@ class Link(object):
         self.rate = rate  # bits per second
         self.delay = delay  # seconds
 
-        self.queue_connected = True #queue connected to link?
+        self.usable = True  # is this link physiclaly usable? could be disabled
         self.free = True  # currently unused? Buffer packets count as use.
         self.buffer = queue.Queue()
         self.buffer_usage = 0
         self.buffer_capacity = buffer_capacity  # bits
 
-    def disrupt(self, connect=False):
-        #simulate a physical link cut
-        self.queue_connected = connect
-    
+    def set_usable(self, usable_status):
+        #  can simulate a physical link cut
+        self.usable = usable_status
+
     def on_packet_entry(self, t, entry_component, p):
         if self.debug:
             print("t={}: {}: packet entered from {}, packet details: {}".
                   format(round(t, 6), self.i, entry_component.i, p))
+        if not self.usable:
+            return  # i mean yes.
 
         exit_end = 1 if entry_component == self.ends[0] else 0
 
-        #make sure buffer is still attached to queue
-        assert self.queue_connected
-        
         if self.free:
             traversal_time = self.delay + p.size / self.rate
             self.free = False
@@ -109,16 +108,14 @@ class Link(object):
                       format(self.i, p.i, exit_end))
             self.buffer_usage += p.size
 
-            
     def on_packet_exit(self, t, exit_end, exiting_packet):
+        if not self.usable:
+            return  # nothing can occur
+
         if self.debug:
             print("t={}: {}: packet exited from end {}, packet details: {}".
                   format(round(t, 6), self.i, exit_end, exiting_packet))
 
-        #make sure buffer is still attached to link
-        assert self.queue_connected
-        assert not self.free
-        
         if self.buffer_usage == 0:
             self.free = True
         else:
@@ -151,27 +148,52 @@ class Flow(object):
         self.packet_counter = 1
         self.ack_wait_time = 0.1  # in seconds
 
+        # 0: Nothing done
+        # 1: h1 (Syn) sent by SRC
+        # 2: h1 received by DST and h2 (SynAck) sent by DST
+        # 3: h2 received by SRC and h3 (Ack) sent by SRC
+        # 4: h3 received by DST
+        self.handshake_status = 0
+
+    def make_packet(self, packet_type):
+        size = 8192 if packet_type == 'data' else 512
+        p = Packet(i=self.i + 'P' + str(self.packet_counter),
+                   source=self.source,
+                   destination=self.destination,
+                   flow=self,
+                   packet_type=packet_type,
+                   size=size)
+        self.packet_counter += 1
+        return p
+
     def consider_send(self, t):
         if self.amount_left > 0 and \
                         len(self.outstanding_packets) < self.window_size:
 
-            p = Packet(i=self.i + 'P' + str(self.packet_counter),
-                       source=self.source,
-                       destination=self.destination,
-                       flow=self,
-                       packet_type='data',
-                       size=8192)
+            if self.handshake_status == 0:
+                p = self.make_packet(packet_type='h1')
+                # TODO: Finish
+                pass
+            elif self.handshake_status == 1:
+                # Wait for SRC to timeout on h1 or receive h2
+                pass
+            elif self.handshake_status == 2:
+                # Wait for SRC to timeout on h2 or receive h3
+                pass
+            else:
+                # SRC can send freely now
 
-            self.packet_counter += 1
-            self.outstanding_packets.add(p)
+                p = self.make_packet(packet_type='data')
 
-            if self.debug:
-                print("t={}, {} sends packet {}".
-                      format(round(t, 6), self.i, p))
+                self.outstanding_packets.add(p)
 
-            self.em.enqueue(FlowAckTimeout(t + self.ack_wait_time, self, p))
-            self.source.link.on_packet_entry(t, self.source, p)
-            self.consider_send(t)  # Send as much as possible.
+                if self.debug:
+                    print("t={}, {} sends packet {}".
+                          format(round(t, 6), self.i, p))
+
+                self.em.enqueue(FlowAckTimeout(t + self.ack_wait_time, self, p))
+                self.source.link.on_packet_entry(t, self.source, p)
+                self.consider_send(t)  # Send as much as possible.
         else:
             # If there's outstanding packets, then either the timeout or the
             # reception of an Ack will trigger action.
@@ -204,6 +226,9 @@ class Packet(object):
     # TYPES OF PACKETS:
     # 'data'
     # 'ack'
+    # 'h1' - handshake 1, or Syn sent by SRC
+    # 'h2' - handshake 2, or SynAck sent by DST after receiving h1 from SRC
+    # 'h3' - handshake 3, or Ack sent by SRC after receiving h2 from SRC
 
     def __init__(self, i, source, destination, flow, packet_type, size,
                  info=None, debug=True):
