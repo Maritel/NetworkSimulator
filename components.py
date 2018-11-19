@@ -39,12 +39,13 @@ class Host(object):
 
 
 class Router(object):
-    def __init__(self, event_manager, i, table=None):
+    def __init__(self, event_manager, i, table=None, debug=True):
         self.em = event_manager
         self.i = i  # string ID; unique for all components
         # Routing table for routers
         self.table = table  # dict(ID -> ID)
         self.links = []  # links that this router can access
+        self.debug = debug
 
     def add_link(self, link):
         self.links.append(link)
