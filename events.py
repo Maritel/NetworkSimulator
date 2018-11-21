@@ -78,6 +78,8 @@ class EventManager(object):
                 event.flow.consider_send(event.t)
             elif type(event) is FlowAckTimeout:
                 event.flow.on_ack_timeout(event.t, event.packet)
+            elif type(event) is LinkBufferRelease:
+                event.link.on_buffer_release(event.t)
             elif type(event) is LinkExit:
                 event.link.on_packet_exit(event.t, event.exit_end, event.packet)
             else:

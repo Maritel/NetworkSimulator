@@ -1,5 +1,5 @@
 from events import *
-import queue
+from collections import deque
 from queue import PriorityQueue
 
 class Host(object):
@@ -65,7 +65,7 @@ class Router(object):
         for router in network[self.i]:
             pq.put((router[1], (self.i, router[0])))
 
-        while(!pq.empty()):
+        while not pq.empty():
             top = pq.get()
             dist[top[1][1]] = top[0]
             if(top[1][0] in child):
@@ -120,8 +120,7 @@ class Link(object):
         self.delay = delay  # seconds
 
         self.usable = True  # is this link physiclaly usable? could be disabled
-        self.free = True  # currently unused? Buffer packets count as use.
-        self.buffer = queue.Queue()
+        self.buffer = deque()
         self.buffer_usage = 0
         self.buffer_capacity = buffer_capacity  # bits
 
@@ -136,20 +135,29 @@ class Link(object):
         if not self.usable:
             return  # i mean yes.
 
-        exit_end = 1 if entry_component == self.ends[0] else 0
-
-        if self.free:
-            traversal_time = self.delay + p.size / self.rate
-            self.free = False
-            self.em.enqueue(LinkExit(t + traversal_time, self, exit_end, p))
-        elif self.buffer_usage + p.size > self.buffer_capacity:
+        if self.buffer_usage + p.size > self.buffer_capacity:
             return  # nice packet loss
-        else:
-            self.buffer.put((p, exit_end))
-            if self.debug:
-                print('{} enqueueing packet into buffer: ({}, end={})'.
-                      format(self.i, p.i, exit_end))
-            self.buffer_usage += p.size
+
+        exit_end = 1 if entry_component == self.ends[0] else 0
+        self.buffer.append((p, exit_end))
+        if self.debug:
+            print('{} enqueueing packet into buffer: ({}, end={})'.
+                    format(self.i, p.i, exit_end))
+        self.buffer_usage += p.size
+        if len(self.buffer) == 1: # First packet
+            self.transmit_next_packet(t)
+
+    def transmit_next_packet(self, t):
+        p, _ = self.buffer[0]
+        self.em.enqueue(LinkBufferRelease(t + self.rate * p.size, self))
+
+    def on_buffer_release(self, t):
+        if not self.usable:
+            return  # nothing can occur
+        p, exit_end = self.buffer.popleft()
+        self.em.enqueue(LinkExit(t + self.delay, self, exit_end, p))
+        if self.buffer:
+            self.transmit_next_packet(t)
 
     def on_packet_exit(self, t, exit_end, exiting_packet):
         if not self.usable:
@@ -158,19 +166,6 @@ class Link(object):
         if self.debug:
             print("t={}: {}: packet exited from end {}, packet details: {}".
                   format(round(t, 6), self.i, exit_end, exiting_packet))
-
-        if self.buffer_usage == 0:
-            self.free = True
-        else:
-            next_p, next_p_exit_end = self.buffer.get()
-            if self.debug:
-                print('{} dequeueing packet from buffer: ({}, end={})'.
-                      format(self.i, next_p.i, exit_end))
-
-            self.buffer_usage -= next_p.size
-            traversal_time = self.delay + next_p.size / self.rate
-            self.em.enqueue(LinkExit(t + traversal_time, self,
-                                     next_p_exit_end, next_p))
 
         self.ends[exit_end].on_packet_reception(t, exiting_packet)
 
