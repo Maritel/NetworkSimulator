@@ -35,7 +35,7 @@ class Host(object):
             if self.debug:
                 print("t={}: {}: creating ack packet: {}".
                       format(round(t, 6), self.i, ack_packet))
-            self.link.on_packet_entry(t, self, ack_packet)
+            self.link.on_packet_entry(t, ack_packet)
 
 
 class Router(object):
@@ -102,20 +102,21 @@ class Router(object):
         #silently fail
         nextLink = self.links[self.table[p.destination.id]]
         try:
-            nextLink.on_packet_entry(t, self.i, p)
+            nextLink.on_packet_entry(t, p)
             return True
         except:
             return False
 
 
 class Link(object):
-    def __init__(self, event_manager, i, end_a, end_b, rate, delay,
+    def __init__(self, event_manager, i, source, dest, rate, delay,
                  buffer_capacity, debug=True):
         self.debug = debug
 
         self.em = event_manager
         self.i = i
-        self.ends = (end_a, end_b)  # Each end is either a router or a host
+        self.source = source  # Each end is either a router or a host
+        self.dest = dest
         self.rate = rate  # bits per second
         self.delay = delay  # seconds
 
@@ -128,46 +129,45 @@ class Link(object):
         #  can simulate a physical link cut
         self.usable = usable_status
 
-    def on_packet_entry(self, t, entry_component, p):
+    def on_packet_entry(self, t, p):
         if self.debug:
-            print("t={}: {}: packet entered from {}, packet details: {}".
-                  format(round(t, 6), self.i, entry_component.i, p))
+            print("t={}: {} (from {} to {}) packet entry, details: {}".
+                  format(round(t, 6), self.i, self.source.i, self.dest.i, p))
         if not self.usable:
             return  # i mean yes.
 
         if self.buffer_usage + p.size > self.buffer_capacity:
             return  # nice packet loss
 
-        exit_end = 1 if entry_component == self.ends[0] else 0
-        self.buffer.append((p, exit_end))
+        self.buffer.append(p)
         if self.debug:
-            print('{} enqueueing packet into buffer: ({}, end={})'.
-                    format(self.i, p.i, exit_end))
+            print('{} (from {} to {}) enqueueing packet into buffer: {}'.
+                    format(self.i, self.source.i, self.dest.i, p.i))
         self.buffer_usage += p.size
         if len(self.buffer) == 1: # First packet
             self.transmit_next_packet(t)
 
     def transmit_next_packet(self, t):
-        p, _ = self.buffer[0]
+        p = self.buffer[0]
         self.em.enqueue(LinkBufferRelease(t + self.rate * p.size, self))
 
     def on_buffer_release(self, t):
         if not self.usable:
             return  # nothing can occur
-        p, exit_end = self.buffer.popleft()
-        self.em.enqueue(LinkExit(t + self.delay, self, exit_end, p))
+        p = self.buffer.popleft()
+        self.em.enqueue(LinkExit(t + self.delay, self, p))
         if self.buffer:
             self.transmit_next_packet(t)
 
-    def on_packet_exit(self, t, exit_end, exiting_packet):
+    def on_packet_exit(self, t, exiting_packet):
         if not self.usable:
             return  # nothing can occur
 
         if self.debug:
-            print("t={}: {}: packet exited from end {}, packet details: {}".
-                  format(round(t, 6), self.i, exit_end, exiting_packet))
+            print("t={}: {} (from {} to {}) packet exit, details: {}".
+                  format(round(t, 6), self.i, self.source.i, self.dest.i, exiting_packet))
 
-        self.ends[exit_end].on_packet_reception(t, exiting_packet)
+        self.dest.on_packet_reception(t, exiting_packet)
 
 
 class Flow(object):
@@ -230,7 +230,7 @@ class Flow(object):
                           format(round(t, 6), self.i, p))
 
                 self.em.enqueue(FlowAckTimeout(t + self.ack_wait_time, self, p))
-                self.source.link.on_packet_entry(t, self.source, p)
+                self.source.link.on_packet_entry(t, p)
                 self.consider_send(t)  # Send as much as possible.
         else:
             # If there's outstanding packets, then either the timeout or the

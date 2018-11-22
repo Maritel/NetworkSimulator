@@ -11,16 +11,15 @@ class MockHost:
         self.times.append(t)
         self.packets.append(p)
 
-
 em = EventManager()
 h1 = MockHost('H1')
 h2 = MockHost('H2')
 f = Flow(em, 'F', h1, h2, 100)
 l = Link(em, 'L', h1, h2, 1, 10, 100)  # rate 1, delay 10
-l.on_packet_entry(0, h1, Packet('P1', h1, h2, f, 0, 1))
-l.on_packet_entry(0, h1, Packet('P2', h1, h2, f, 0, 1))
-l.on_packet_entry(0, h1, Packet('P3', h1, h2, f, 0, 1))
-l.on_packet_entry(0, h1, Packet('P4', h1, h2, f, 0, 1))
-l.on_packet_entry(0, h1, Packet('P5', h1, h2, f, 0, 1))
+l.on_packet_entry(0, Packet('P1', h1, h2, f, 0, 1))
+l.on_packet_entry(0, Packet('P2', h1, h2, f, 0, 1))
+l.on_packet_entry(0, Packet('P3', h1, h2, f, 0, 1))
+l.on_packet_entry(0, Packet('P4', h1, h2, f, 0, 1))
+l.on_packet_entry(0, Packet('P5', h1, h2, f, 0, 1))
 em.run()
 assert h2.times == [11, 12, 13, 14, 15]

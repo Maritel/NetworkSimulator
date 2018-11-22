@@ -54,10 +54,9 @@ class LinkBufferRelease(Event):
 
 class LinkExit(Event):
     # When a packet reaches the end of a link.
-    def __init__(self, t, link, exit_end, packet):
+    def __init__(self, t, link, packet):
         super().__init__(t)
         self.link = link
-        self.exit_end = exit_end  # 0 or 1
         self.packet = packet
 
 
@@ -81,6 +80,6 @@ class EventManager(object):
             elif type(event) is LinkBufferRelease:
                 event.link.on_buffer_release(event.t)
             elif type(event) is LinkExit:
-                event.link.on_packet_exit(event.t, event.exit_end, event.packet)
+                event.link.on_packet_exit(event.t, event.packet)
             else:
                 pass
