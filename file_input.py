@@ -1,5 +1,10 @@
-from components import *
+from link import Link
+from router import Router
+from host import Host
+from flow import Flow
+from events import FlowConsiderSend
 import json
+
 
 def read_network(filename, event_manager):
     """

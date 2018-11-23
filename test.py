@@ -1,5 +1,4 @@
-from components import *
-from events import *
+from events import EventManager
 from file_input import read_network
 
 if __name__ == '__main__':
