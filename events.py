@@ -1,5 +1,6 @@
 import queue
 
+
 class Event(object):
 
     def __init__(self, t):
@@ -58,6 +59,13 @@ class LinkExit(Event):
         super().__init__(t)
         self.link = link
         self.packet = packet
+
+
+class HandshakeRetry(Event):
+    def __init__(self, t, flow, level):
+        super().__init__(t)
+        self.flow = flow
+        self.level = level
 
 
 class EventManager(object):

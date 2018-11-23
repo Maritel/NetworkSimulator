@@ -23,4 +23,4 @@ class Packet(object):
         return "(id: {}, src: {}, dst: {}, " \
                "flow: {}, type: {}, " \
                "size: {})".format(self.i, self.source.i, self.destination.i,
-                                 self.flow.i, self.packet_type, self.size)
+                                  self.flow.i, self.packet_type, self.size)

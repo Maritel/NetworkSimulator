@@ -26,20 +26,5 @@ class Host(object):
         else:
             p.flow.on_destination_reception(t, p)
 
-
-        if p.packet_type == 'ack':
-            acked_packet = p.info
-            p.flow.on_ack_reception(t, acked_packet)
-        elif p.packet_type == 'data':
-            # Create acknowledgement packet and send it.
-            ack_packet = Packet(i='A' + p.i,
-                                source=self,
-                                destination=p.source,
-                                flow=p.flow,
-                                packet_type='ack',
-                                size=512,
-                                info=p)
-            if self.debug:
-                print("t={}: {}: creating ack packet: {}".
-                      format(round(t, 6), self.i, ack_packet))
-            self.link.on_packet_entry(t, ack_packet)
+    def __str__(self):
+        return self.i
