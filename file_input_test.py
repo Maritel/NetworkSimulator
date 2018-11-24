@@ -1,24 +1,22 @@
-from file_input import read_network
 from events import EventManager
+from file_input import read_network
+from host import Host
+from link import Link
+from flow import Flow
 
 em = EventManager()
 hosts, routers, links, flows = read_network('test_case_0.json', em)
-assert list(hosts.keys()) == ['H1', 'H2']
-assert hosts['H1'].link == links['L1_a']
-assert hosts['H2'].link == links['L1_b']
+h1 = Host(em, 'H1')
+h1.add_link(links['L1_a'])
+h2 = Host(em, 'H2')
+h2.add_link(links['L1_b'])
+assert hosts == {
+    'H1': h1,
+    'H2': h2
+}
 assert routers == {}
-assert list(links.keys()) == ['L1_a', 'L1_b']
-assert links['L1_a'].source == hosts['H1']
-assert links['L1_a'].dest == hosts['H2']
-assert links['L1_a'].rate == 10e6
-assert links['L1_a'].delay == 10e-3
-assert links['L1_a'].buffer_capacity == 64e3
-assert links['L1_b'].source == hosts['H2']
-assert links['L1_b'].dest == hosts['H1']
-assert links['L1_b'].rate == 10e6
-assert links['L1_b'].delay == 10e-3
-assert links['L1_b'].buffer_capacity == 64e3
-assert list(flows.keys()) == ['F1']
-assert flows['F1'].source == hosts['H1']
-assert flows['F1'].destination == hosts['H2']
-assert flows['F1'].amount_left == 1.6e8
+assert links == {
+    'L1_a': Link(em, 'L1_a', hosts['H1'], hosts['H2'], 1.049e7, 10e-3, 5.24e5),
+    'L1_b': Link(em, 'L1_b', hosts['H2'], hosts['H1'], 1.049e7, 10e-3, 5.24e5)
+}
+# TODO check flows; it is a bit difficult

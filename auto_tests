@@ -2,9 +2,25 @@
 
 status=0
 
-python3 link_test.py || status=1
-python3 file_input_test.py || status=1
-python3 tcp_test.py || status=1
+declare -a tests=(
+    'python3 file_input_test.py'
+    'python3 flow_test.py'
+    'python3 link_test.py'
+)
+
+for cmd in "${tests[@]}"; do
+    if $cmd; then
+        echo $cmd "PASS"
+    else
+        echo $cmd "FAIL"
+        status=1
+    fi
+    echo
+done
+
+# python3 file_input_test.py || status=1
+# python3 flow_test.py || status=1
+# python3 link_test.py || status=1
 
 if [ $status -eq 0 ]
 then
