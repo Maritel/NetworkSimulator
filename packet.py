@@ -34,3 +34,6 @@ class Packet(object):
                     self.seq_number,
                     self.ack_number,
                     self.size)
+    
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__

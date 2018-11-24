@@ -4,6 +4,7 @@ status=0
 
 python3 link_test.py || status=1
 python3 file_input_test.py || status=1
+python3 tcp_test.py || status=1
 
 if [ $status -eq 0 ]
 then

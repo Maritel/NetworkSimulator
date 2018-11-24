@@ -91,7 +91,7 @@ class FlowEnd(object):
                       .format(round(t, 6), self, syn_packet))
 
         else:  # I'm established. Send a data packet if I need to.
-            if self.send_first_unacked > self.last_seq_number:
+            if self.send_next > self.last_seq_number:
                 return  # All the data is sent.
             if self.send_next - self.send_first_unacked >= self.window_size:
                 return  # Window size prevents a send.
@@ -108,7 +108,7 @@ class FlowEnd(object):
                        fin_flag=False,
                        seq_number=self.send_next,
                        ack_number=self.receive_next,
-                       size=8196)
+                       size=8192)
             # Schedule an AckTimeout
             ack_timeout_event = \
                 AckTimeout(t + self.data_ack_wait, self, self.send_next)
