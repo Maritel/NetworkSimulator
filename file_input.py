@@ -1,3 +1,4 @@
+from congestion_control import StopAndWait, Reno
 from link import Link
 from router import Router
 from host import Host
@@ -55,12 +56,22 @@ def read_network(filename, event_manager):
         destination = endpts[json_flow['destination']]
         assert isinstance(destination, Host), \
                'Destination %s is not a host' % json_flow['destination']
+        cc = None
+        if json_flow['congestion_control'] == 'StopAndWait':
+            cc = StopAndWait()
+        elif json_flow['congestion_control'] == 'Reno':
+            cc = Reno()
+        else:
+            raise ValueError('Unknown congestion control algorithm '
+                             + json_flow['congestion_control'])
+
         flow = Flow(event_manager,
                     json_flow['id'],
                     source,
                     destination,
                     json_flow['amount'],
-                    json_flow['start_delay'])  # amount of data in bits
+                    json_flow['start_delay'],
+                    cc)
         flows[flow.i] = flow
 
     return hosts, routers, links, flows

@@ -23,7 +23,8 @@
             "source": "H1",
             "destination": "H2",
             "amount": 1.678e8,
-            "start_delay": 1.0
+            "start_delay": 1.0,
+            "congestion_control": "StopAndWait"
         }
     ]
 }

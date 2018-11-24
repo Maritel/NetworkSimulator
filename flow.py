@@ -1,3 +1,4 @@
+from congestion_control import StopAndWait
 from events import AckTimeout, FlowEndAct
 from packet import Packet, DATA_PACKET_SIZE, CONTROL_PACKET_SIZE
 from math import ceil
@@ -6,7 +7,7 @@ from math import ceil
 
 
 class FlowEnd(object):
-    def __init__(self, event_manager, i, flow, host, other_host, amount,
+    def __init__(self, event_manager, i, flow, host, other_host, amount, cc,
                  debug=True):
         self.debug = debug
         self.em = event_manager
@@ -46,15 +47,16 @@ class FlowEnd(object):
         # Map of (Seq # -> AckTimeout event for that Seq#)
         self.ack_timeout_events = {}
 
-        # TODO: A congestion control algorithm will probably have more fields.
+        # Congestion control algorithm.
+        self.cc = cc
 
         #
         # OPERATION PARAMETERS
         #
         self.handshake_ack_wait = 0.1
-        self.window_size = 25
+        self.window_size = cc.initial_cwnd()
         self.data_ack_wait = 0.1
-        # TODO: Set these less arbitrarily based on a CC algorithm.
+        # TODO: Compute timeouts using algorithm from book.
 
     def is_established(self):
         return self.send_first_unacked > self.send_iss
@@ -136,11 +138,9 @@ class FlowEnd(object):
         self.send_next = self.send_first_unacked
 
         # ADJUST SETTINGS
+        self.window_size = self.cc.ack_timeout()
         if not self.is_established():
             self.handshake_ack_wait *= 2
-        else:
-            # TODO: Implement part of a CC algorithm here.
-            pass
 
         # Clear all ack timeout events, because we're starting from the first
         # unacknowledged packet anyway.
@@ -152,8 +152,6 @@ class FlowEnd(object):
         pass
 
     def on_reception(self, t, received_packet):
-        # TODO: Modify this function with parts of a congestion control alg.
-
         assert received_packet.receiver == self.host
         if self.debug:
             print("t={}: {} received packet {}"
@@ -164,11 +162,27 @@ class FlowEnd(object):
         #
 
         if received_packet.ack_flag:
-            # send_first_unacked might increase.
-            self.send_first_unacked = \
-                max(received_packet.ack_number, self.send_first_unacked)
-            # Likewise, send_next might increase.
-            self.send_next = max(self.send_next, self.send_first_unacked)
+            # Got an ACK
+            # Update window size and send_first_unacked.
+            # Retransmit if needed
+            if received_packet.ack_number < self.send_first_unacked:
+                # TODO is this possible?
+                assert False
+
+            elif received_packet.ack_number == self.send_first_unacked:
+                if received_packet.size == CONTROL_PACKET_SIZE:
+                    # Only non-data packets can be dupacks
+                    retransmit, self.window_size = self.cc.dupack()
+                    if retransmit:
+                        # Clear all ack timeout events, because we're starting
+                        # from the first unacknowledged packet anyway.
+                        for _, event in self.ack_timeout_events.items():
+                            event.invalidate()
+                        self.ack_timeout_events.clear()
+                        self.send_next = self.send_first_unacked
+            else:
+                self.send_first_unacked = received_packet.ack_number
+                self.window_size = self.cc.posack()
 
             self.clear_redundant_timeouts(received_packet.ack_number)  # clean
 
@@ -261,7 +275,7 @@ class FlowEnd(object):
 
 class Flow(object):
     def __init__(self, event_manager, i, src_host, dst_host, amount,
-                 start_delay, debug=True):
+                 start_delay, src_cc, debug=True):
         self.debug = debug
         self.em = event_manager
         self.i = i
@@ -276,6 +290,7 @@ class Flow(object):
                            host=self.src_host,
                            other_host=self.dst_host,
                            amount=self.amount,
+                           cc=src_cc,
                            debug=self.debug)
 
         self.dst = FlowEnd(event_manager=self.em,
@@ -284,6 +299,7 @@ class Flow(object):
                            host=self.dst_host,
                            other_host=self.src_host,
                            amount=0,
+                           cc=StopAndWait(),
                            debug=self.debug)
 
         self.em.enqueue(FlowEndAct(t=self.start_delay, flow_end=self.src))
