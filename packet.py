@@ -1,3 +1,5 @@
+DATA_PACKET_SIZE = 8192
+CONTROL_PACKET_SIZE = 512
 
 
 class Packet(object):

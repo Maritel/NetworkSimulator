@@ -1,5 +1,5 @@
 from events import AckTimeout, FlowEndAct
-from packet import Packet
+from packet import Packet, DATA_PACKET_SIZE, CONTROL_PACKET_SIZE
 from math import ceil
 
 # https://tools.ietf.org/html/rfc793#section-3.4
@@ -28,7 +28,7 @@ class FlowEnd(object):
         self.send_iss = 0  # seq# of Syn packet that I send
 
         # Once this seq# is acknowledged, we're done.
-        self.last_seq_number = self.send_iss + ceil(amount / (8196 - 512))
+        self.last_seq_number = self.send_iss + ceil(amount / DATA_PACKET_SIZE)
 
         # seq# of the first unacked packet, even if I haven't sent it
         self.send_first_unacked = self.send_iss
@@ -72,7 +72,7 @@ class FlowEnd(object):
                        fin_flag=False,
                        seq_number=self.send_iss,
                        ack_number=None,
-                       size=512)
+                       size=CONTROL_PACKET_SIZE)
             # Schedule an AckTimeout for this packet.
             ack_timeout_event = \
                 AckTimeout(t + self.handshake_ack_wait, self, self.send_iss)
@@ -108,7 +108,7 @@ class FlowEnd(object):
                        fin_flag=False,
                        seq_number=self.send_next,
                        ack_number=self.receive_next,
-                       size=8192)
+                       size=DATA_PACKET_SIZE)
             # Schedule an AckTimeout
             ack_timeout_event = \
                 AckTimeout(t + self.data_ack_wait, self, self.send_next)
@@ -187,7 +187,7 @@ class FlowEnd(object):
                                      fin_flag=False,
                                      seq_number=self.send_iss,
                                      ack_number=None,
-                                     size=512)
+                                     size=CONTROL_PACKET_SIZE)
             # But we also acknowledge the packet we've received if it's Syn.
             # We don't acknowledge data packets.
             if received_packet.syn_flag:
@@ -234,7 +234,7 @@ class FlowEnd(object):
                            fin_flag=False,
                            seq_number=self.send_next,
                            ack_number=self.receive_next,
-                           size=512)
+                           size=CONTROL_PACKET_SIZE)
 
                 # Do NOT schedule a timeout, just send the packet.
                 self.host.link.on_packet_entry(t, response_packet)
