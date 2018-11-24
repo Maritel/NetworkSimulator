@@ -14,17 +14,14 @@ class Host(object):
         self.link = link
 
     def on_reception(self, t, p):
-        if self.debug:
-            print("t={}: {}: packet received: {}".
-                  format(round(t, 6), self.i, p))
 
-        assert p.destination == self
-        assert p.flow.source == self or p.flow.destination == self
+        assert p.receiver == self
+        assert p.flow.src_host == self or p.flow.dst_host == self
 
-        if p.flow.source == self:
-            p.flow.on_source_reception(t, p)
+        if p.flow.src_host == self:
+            p.flow.src.on_reception(t, p)
         else:
-            p.flow.on_destination_reception(t, p)
+            p.flow.dst.on_reception(t, p)
 
     def __str__(self):
         return self.i

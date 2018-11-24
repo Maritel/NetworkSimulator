@@ -2,7 +2,6 @@ from link import Link
 from router import Router
 from host import Host
 from flow import Flow
-from events import FlowConsiderSend
 import json
 
 
@@ -60,11 +59,9 @@ def read_network(filename, event_manager):
                     json_flow['id'],
                     source,
                     destination,
-                    json_flow['amount']) # amount of data in bits
+                    json_flow['amount'],
+                    json_flow['start_delay'])  # amount of data in bits
         flows[flow.i] = flow
-        # For a flow that starts after 'delay', we add a FlowConsiderSend
-        # event at time 'delay'
-        event_manager.enqueue(FlowConsiderSend(json_flow['start_delay'], flow))
 
     return hosts, routers, links, flows
 

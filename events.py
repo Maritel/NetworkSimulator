@@ -4,8 +4,14 @@ import queue
 class Event(object):
 
     def __init__(self, t):
-        # If this gets called for any reason that would be strange.
         self.t = t
+        self.valid = True
+
+    def is_valid(self):
+        return self.valid
+
+    def invalidate(self):
+        self.valid = False
 
     def __eq__(self, other_event):
         return self.t == other_event.t
@@ -26,17 +32,17 @@ class Event(object):
         return self.t <= other_event.t
 
 
-class FlowConsiderSend(Event):
-    def __init__(self, t, flow):
+class FlowEndAct(Event):
+    def __init__(self, t, flow_end):
         super().__init__(t)
-        self.flow = flow  # flow which starts
+        self.flow_end = flow_end  # flow which starts
 
 
-class FlowAckTimeout(Event):
-    def __init__(self, t, flow, packet):
+class AckTimeout(Event):
+    def __init__(self, t, flow_end, seq_number):
         super().__init__(t)
-        self.flow = flow
-        self.packet = packet  # which packet this timeout refers to
+        self.flow_end = flow_end  # either FlowSrc or FlowDst
+        self.seq_number = seq_number
 
 
 class LinkEntry(Event):
@@ -61,13 +67,6 @@ class LinkExit(Event):
         self.packet = packet
 
 
-class HandshakeRetry(Event):
-    def __init__(self, t, flow, level):
-        super().__init__(t)
-        self.flow = flow
-        self.level = level
-
-
 class EventManager(object):
     def __init__(self):
         self.event_queue = queue.PriorityQueue()
@@ -78,16 +77,18 @@ class EventManager(object):
 
     def run(self, max_time=100000):
         while not self.event_queue.empty() and self.current_time <= max_time:
-            event = self.event_queue.get()
-            self.current_time = event.t
+            ev = self.event_queue.get()
+            self.current_time = ev.t
 
-            if type(event) is FlowConsiderSend:
-                event.flow.consider_send(event.t)
-            elif type(event) is FlowAckTimeout:
-                event.flow.on_ack_timeout(event.t, event.packet)
-            elif type(event) is LinkBufferRelease:
-                event.link.on_buffer_release(event.t)
-            elif type(event) is LinkExit:
-                event.link.on_packet_exit(event.t, event.packet)
-            else:
-                pass
+            if ev.is_valid():
+
+                if type(ev) is FlowEndAct:
+                    ev.flow_end.act(ev.t)
+                elif type(ev) is AckTimeout:
+                    ev.flow_end.on_ack_timeout(ev.t, ev.seq_number)
+                elif type(ev) is LinkBufferRelease:
+                    ev.link.on_buffer_release(ev.t)
+                elif type(ev) is LinkExit:
+                    ev.link.on_packet_exit(ev.t, ev.packet)
+                else:
+                    pass

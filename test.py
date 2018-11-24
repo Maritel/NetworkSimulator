@@ -20,6 +20,8 @@ if __name__ == '__main__':
     with redirect_stdout(trap):
         em.run()
 
+    # em.run()
+
     print(em.current_time)
 
 

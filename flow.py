@@ -1,159 +1,300 @@
-from events import FlowAckTimeout, HandshakeRetry
+from events import AckTimeout, FlowEndAct
 from packet import Packet
+from math import ceil
+
+# https://tools.ietf.org/html/rfc793#section-3.4
+
+
+class FlowEnd(object):
+    def __init__(self, event_manager, i, flow, host, other_host, amount,
+                 debug=True):
+        self.debug = debug
+        self.em = event_manager
+        self.i = i
+        self.flow = flow
+        self.host = host
+        self.other_host = other_host
+
+
+        #
+        # STATE VARIABLES
+        #
+
+        # There are a lot of two TCP states, but we only care if the Syn
+        # packet (the one with seq# send_iss) has been acknowledged.
+        # If it has, we are established and can send and acknowledge data.
+        # Otherwise, we must continue the handshake until establishment.
+
+        self.send_iss = 0  # seq# of Syn packet that I send
+
+        # Once this seq# is acknowledged, we're done.
+        self.last_seq_number = self.send_iss + ceil(amount / (8196 - 512))
+
+        # seq# of the first unacked packet, even if I haven't sent it
+        self.send_first_unacked = self.send_iss
+
+        # seq# of next packet to send, # if all outstanding packets are acked
+        self.send_next = self.send_iss
+
+        self.receive_iss = None  # seq# of Syn packet that counterparty sends
+
+        # seq# of the first packet I haven't received. Under normal operation,
+        # this won't increase except by 1.
+        self.receive_next = None
+
+        # Timeouts that are relevant to me. Also remembers outstanding packets.
+        # Map of (Seq # -> AckTimeout event for that Seq#)
+        self.ack_timeout_events = {}
+
+        # TODO: A congestion control algorithm will probably have more fields.
+
+        #
+        # OPERATION PARAMETERS
+        #
+        self.handshake_ack_wait = 0.1
+        self.window_size = 25
+        self.data_ack_wait = 0.1
+        # TODO: Set these less arbitrarily based on a CC algorithm.
+
+    def is_established(self):
+        return self.send_first_unacked > self.send_iss
+
+    def act(self, t):
+        if not self.is_established():
+            # Resend the initial Syn packet.
+            syn_packet = \
+                Packet(i=self.flow.get_packet_id(),
+                       flow=self.flow,
+                       sender=self.host,
+                       receiver=self.other_host,
+                       syn_flag=True,
+                       ack_flag=False,
+                       fin_flag=False,
+                       seq_number=self.send_iss,
+                       ack_number=None,
+                       size=512)
+            # Schedule an AckTimeout for this packet.
+            ack_timeout_event = \
+                AckTimeout(t + self.handshake_ack_wait, self, self.send_iss)
+            self.ack_timeout_events[self.send_iss] = ack_timeout_event
+            self.em.enqueue(ack_timeout_event)
+
+            # Send the packet.
+            self.host.link.on_packet_entry(t, syn_packet)
+
+            # Update internal state.
+            self.send_first_unacked = self.send_iss
+            self.send_next = self.send_iss + 1
+
+            if self.debug:
+                print("t={}: {} sends packet: {}"
+                      .format(round(t, 6), self, syn_packet))
+
+        else:  # I'm established. Send a data packet if I need to.
+            if self.send_first_unacked > self.last_seq_number:
+                return  # All the data is sent.
+            if self.send_next - self.send_first_unacked >= self.window_size:
+                return  # Window size prevents a send.
+
+            assert self.receive_next is not None  # since ESTABLISHED
+
+            data_packet = \
+                Packet(i=self.flow.get_packet_id(),
+                       flow=self.flow,
+                       sender=self.host,
+                       receiver=self.other_host,
+                       syn_flag=False,
+                       ack_flag=True,
+                       fin_flag=False,
+                       seq_number=self.send_next,
+                       ack_number=self.receive_next,
+                       size=8196)
+            # Schedule an AckTimeout
+            ack_timeout_event = \
+                AckTimeout(t + self.data_ack_wait, self, self.send_next)
+            self.ack_timeout_events[self.send_next] = ack_timeout_event
+            self.em.enqueue(ack_timeout_event)
+
+            # Send the packet.
+            self.host.link.on_packet_entry(t, data_packet)
+            if self.debug:
+                print("t={}: {} sends packet: {}"
+                      .format(round(t, 6), self, data_packet))
+
+            # Update internal state.
+            self.send_next += 1
+            self.act(t)  # Utilize the entire window.
+
+    def on_ack_timeout(self, t, seq_number):
+        if self.debug:
+            print("t={}: {} ack timeout on seq# {}"
+                  .format(round(t, 6), self, seq_number))
+
+        # We want to retransmit the first unacknowledged packet. Usually, this
+        # should be the packet with #seq_number.
+        assert self.send_first_unacked <= seq_number
+        self.send_next = self.send_first_unacked
+
+        # ADJUST SETTINGS
+        if not self.is_established():
+            self.handshake_ack_wait *= 2
+        else:
+            # TODO: Implement part of a CC algorithm here.
+            pass
+
+        # Clear all ack timeout events, because we're starting from the first
+        # unacknowledged packet anyway.
+        for _, event in self.ack_timeout_events.items():
+            event.invalidate()
+        self.ack_timeout_events.clear()
+
+        self.act(t)
+        pass
+
+    def on_reception(self, t, received_packet):
+        # TODO: Modify this function with parts of a congestion control alg.
+
+        assert received_packet.receiver == self.host
+        if self.debug:
+            print("t={}: {} received packet {}"
+                  .format(round(t, 6), self, received_packet))
+
+        #
+        # OPERATIONS AGNOSTIC TO WHETHER WE'RE ESTABLISHED
+        #
+
+        if received_packet.ack_flag:
+            # send_first_unacked might increase.
+            self.send_first_unacked = \
+                max(received_packet.ack_number, self.send_first_unacked)
+            # Likewise, send_next might increase.
+            self.send_next = max(self.send_next, self.send_first_unacked)
+
+            self.clear_redundant_timeouts(received_packet.ack_number)  # clean
+
+        #
+        # OPERATIONS DEPENDING ON WHETHER WE'RE ESTABLISHED
+        #
+
+        if not self.is_established():
+            # We're always sending a Syn received_packet.
+            response_packet = Packet(i=self.flow.get_packet_id(),
+                                     flow=self.flow,
+                                     sender=self.host,
+                                     receiver=self.other_host,
+                                     syn_flag=True,
+                                     ack_flag=False,
+                                     fin_flag=False,
+                                     seq_number=self.send_iss,
+                                     ack_number=None,
+                                     size=512)
+            # But we also acknowledge the packet we've received if it's Syn.
+            # We don't acknowledge data packets.
+            if received_packet.syn_flag:
+                # Update state
+                self.receive_iss = received_packet.seq_number  # syn seq#
+                self.receive_next = self.receive_iss + 1
+
+                # Modify response packet to change it to SynAck.
+                response_packet.ack_flag = True
+                response_packet.ack_number = self.receive_next
+
+            # Schedule a timeout for the response packet.
+            ack_timeout_event = \
+                AckTimeout(t + self.handshake_ack_wait, self, self.send_iss)
+            self.ack_timeout_events[self.send_iss] = ack_timeout_event
+            self.em.enqueue(ack_timeout_event)
+
+            # Send the packet.
+            self.host.link.on_packet_entry(t, response_packet)
+
+            # Update internal state.
+            self.send_first_unacked = self.send_iss
+            self.send_next = self.send_iss + 1
+
+            # Can't act, since we're not established.
+
+        else:  # We're established. A response is required if Syn or data.
+            if received_packet.syn_flag or received_packet.size >= 513:
+                if received_packet.syn_flag:
+                    self.receive_iss = received_packet.seq_number
+                    if self.receive_next is None:
+                        self.receive_next = self.receive_iss + 1
+                elif received_packet.seq_number == self.receive_next:
+                    # Precise equality is required for this increment.
+                    self.receive_next += 1
+
+                response_packet = \
+                    Packet(i=self.flow.get_packet_id(),
+                           flow=self.flow,
+                           sender=self.host,
+                           receiver=self.other_host,
+                           syn_flag=False,
+                           ack_flag=True,
+                           fin_flag=False,
+                           seq_number=self.send_next,
+                           ack_number=self.receive_next,
+                           size=512)
+
+                # Do NOT schedule a timeout, just send the packet.
+                self.host.link.on_packet_entry(t, response_packet)
+
+                if self.debug:
+                    print("t={}: {} sends packet: {}"
+                          .format(round(t, 6), self, response_packet))
+
+            self.act(t)  # May want to send data here.
+
+    def clear_redundant_timeouts(self, first_unacked_number):
+        invalidated_seq_numbers = []
+        for seq_number, event in self.ack_timeout_events.items():
+            if seq_number < first_unacked_number:
+                event.invalidate()
+                invalidated_seq_numbers.append(seq_number)
+
+        for seq_number in invalidated_seq_numbers:
+            self.ack_timeout_events.pop(seq_number, None)
+
+    def __str__(self):
+        return "{}/{}".format(self.i, self.host.i)
 
 
 class Flow(object):
-    def __init__(self, event_manager, i, source, destination, amount,
-                 debug=True):
+    def __init__(self, event_manager, i, src_host, dst_host, amount,
+                 start_delay, debug=True):
         self.debug = debug
-
         self.em = event_manager
         self.i = i
-        self.source = source # should be a host
-        self.destination = destination
-        self.amount_left = amount  # bits; amount of unack'ed data left to send
+        self.src_host = src_host  # a Host
+        self.dst_host = dst_host  # a Host
+        self.amount = amount
+        self.start_delay = start_delay
 
-        self.outstanding_packets = set([])  # packets we don't know about
-        self.window_size = 1  # max size of 'outstanding packets'
-        self.packet_counter = 1
-        self.ack_wait_time = 0.1  # in seconds
+        self.src = FlowEnd(event_manager=self.em,
+                           i=i + 'SRC',
+                           flow=self,
+                           host=self.src_host,
+                           other_host=self.dst_host,
+                           amount=self.amount,
+                           debug=self.debug)
 
-        # 'Handshake status' is the highest-numbered handshake packet received
-        # by either source or destination.
-        # -1: SRC hasn't sent Syn.
-        # 0: SRC has sent Syn.
-        # 1: DST has received Syn and sent SynAck.
-        # 2: SRC has received SynAck and sent Ack.
-        # 3: DST has received Ack.
-        self.handshake_status = -1
-        self.handshake_n_steps = 3
-        self.handshake_base_wait_time = 0.1  # in seconds; doubles on failure
+        self.dst = FlowEnd(event_manager=self.em,
+                           i=i + 'DST',
+                           flow=self,
+                           host=self.dst_host,
+                           other_host=self.src_host,
+                           amount=0,
+                           debug=self.debug)
 
-        # number of times handshaking was tried at this level
-        self.handshake_source_n_tries = 0
-        self.handshake_destination_n_tries = 0
+        self.em.enqueue(FlowEndAct(t=self.start_delay, flow_end=self.src))
 
-    def make_packet(self, packet_type, from_source=True):
-        size = 8192 if packet_type == 'data' else 512
-        from_string = 'S' if from_source else 'D'
-        p = Packet(i=self.i + from_string + 'P' + str(self.packet_counter),
-                   source=self.source if from_source else self.destination,
-                   destination=self.destination if from_source else self.source,
-                   flow=self,
-                   packet_type=packet_type,
-                   size=size)
-        self.packet_counter += 1
-        return p
+        self.counter = 0
 
-    def handshake_send(self, t, level):
-        if level == 1:
-            # Source needs to send Syn.
-            if self.handshake_status >= 2:
-                return  # SRC received SynAck so nothing happens.
-            p = self.make_packet(packet_type='h1', from_source=True)
-            self.source.link.on_packet_entry(t, p)
-            if self.debug:
-                print("t={}, Flow {}, {} sends handshake packet {}".
-                      format(round(t, 6), self, self.source, p))
+    def get_counter(self):
+        # Generates unique ids.
+        self.counter += 1
+        return self.counter
 
-            # Specify a time to try this again.
-            wait_time = self.handshake_base_wait_time * \
-                        2 ** self.handshake_source_n_tries
-            self.handshake_source_n_tries += 1
-            self.em.enqueue(HandshakeRetry(t, flow=self, level=level))
-        elif level == 2:
-            # Destination needs to send SynAck.
-            if self.handshake_status >= 3:
-                return  # DST received Ack so nothing happens.
-            p = self.make_packet(packet_type='h2', from_source=False)
-            self.destination.link.on_packet_entry(t, p)
-            if self.debug:
-                print("t={}, Flow {}, {} sends handshake packet {}".
-                      format(round(t, 6), self, self.destination, p))
-
-            # Specify a time to try this again.
-            wait_time = self.handshake_base_wait_time * \
-                        2 ** self.handshake_destination_n_tries
-            self.handshake_destination_n_tries += 1
-            self.em.enqueue(HandshakeRetry(t, flow=self, level=level))
-        else:  # level = 3
-            # SRC needs to send Ack.
-            p = self.make_packet(packet_type='h3', from_source=True)
-            self.source.link.on_packet_entry(t, p)
-
-            if self.debug:
-                print("t={}: Flow {}, {} sends handshake packet {}".
-                      format(round(t, 6), self, self.source, p))
-
-            # SRC doesn't try this again unless prompted by re-reception of h2.
-
-    def consider_send(self, t):
-        if self.amount_left > 0 and \
-                        len(self.outstanding_packets) < self.window_size:
-
-            # If handshake status is 0, 1, 2, we don't do anything.
-            if self.handshake_status == -1:
-                self.handshake_send(t, 1)
-            elif self.handshake_status >= 2:
-                # SRC should be sending, although they might not get acks if h3
-                # was dropped.
-                p = self.make_packet(packet_type='data', from_source=True)
-
-                self.outstanding_packets.add(p)
-
-                if self.debug:
-                    print("t={}, {} sends packet {}".
-                          format(round(t, 6), self.i, p))
-
-                self.em.enqueue(FlowAckTimeout(t + self.ack_wait_time, self, p))
-                self.source.link.on_packet_entry(t, p)
-                self.consider_send(t)  # Send as much as possible.
-
-    def on_source_reception(self, t, p):
-        if p.packet_type == 'ack' and self.handshake_status >= 2:
-            acked_packet = p.info
-            if acked_packet in self.outstanding_packets:
-                self.outstanding_packets.remove(acked_packet)
-                self.amount_left -= acked_packet.size
-                self.consider_send(t)
-        elif p.packet_type == 'h2':
-            self.handshake_status = max(self.handshake_status, 2)
-            self.handshake_send(t, level=3)
-            self.consider_send(t)  # Start trying to send data.
-        else:
-            assert False
-
-    def on_destination_reception(self, t, p):
-        if p.packet_type == 'data' and self.handshake_status >= 3:
-            # Don't acknowledge data if h3 hasn't occurred.
-            ack_packet = self.make_packet(packet_type='ack', from_source=False)
-            ack_packet.info = p
-            if self.debug:
-                print("t={}: {}: creating ack packet: {}".
-                      format(round(t, 6), self.i, ack_packet))
-            self.destination.link.on_packet_entry(t, ack_packet)
-        elif p.packet_type == 'h1':
-            self.handshake_status = max(self.handshake_status, 1)
-            self.handshake_send(t, level=2)
-        elif p.packet_type == 'h3':
-            self.handshake_status = max(self.handshake_status, 3)
-        else:
-            assert False
-
-    def on_ack_timeout(self, t, timed_out_packet):
-        if timed_out_packet in self.outstanding_packets:
-            self.outstanding_packets.remove(timed_out_packet)
-
-            # TODO: modify parameters more intelligently
-            self.ack_wait_time *= 2
-
-            self.consider_send(t)
-
-            if self.debug:
-                print("t={}: {}: ack timeout for packet: {}".
-                      format(round(t, 6), self.i, timed_out_packet))
-        else:
-            pass  # Was previously acknowledged successfully.
-
-    def __str__(self):
-        return self.i
+    def get_packet_id(self):
+        # Generates unique packet ids. Debugging purposes only.
+        return self.i + str(self.get_counter())

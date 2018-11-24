@@ -8,25 +8,29 @@ class Packet(object):
     # 'h2' - handshake 2, or SynAck sent by DST after receiving h1 from SRC
     # 'h3' - handshake 3, or Ack sent by SRC after receiving h2 from SRC
 
-    def __init__(self, i, source, destination, flow, packet_type, size,
-                 info=None, debug=True):
+    def __init__(self, i, flow, sender, receiver, syn_flag, ack_flag, fin_flag,
+                 seq_number, ack_number, size):
         self.i = i
-        self.source = source
-        self.destination = destination
         self.flow = flow
-        self.packet_type = packet_type
-        self.size = size  # bits
-        self.info = info
-        self.debug = debug
+        self.sender = sender
+        self.receiver = receiver
+        self.syn_flag = syn_flag
+        self.ack_flag = ack_flag
+        self.fin_flag = fin_flag
+        self.seq_number = seq_number
+        self.ack_number = ack_number
+        self.size = size
 
     def __str__(self):
-        return "(id: {}, src: {}, dst: {}, " \
-               "flow: {}, type: {}, " \
-               "size: {}, info: {})".\
-               format(self.i,
-                      self.source.i,
-                      self.destination.i,
-                      self.flow.i,
-                      self.packet_type,
-                      self.size,
-                      self.info)
+        return "(id: {}, flow: {}, sender: {}, receiver: {}, syn: {}, " \
+               "ack: {}, fin: {}, seq#: {}, ack#: {}, size: {})"\
+            .format(self.i,
+                    self.flow.i,
+                    self.sender.i,
+                    self.receiver.i,
+                    int(self.syn_flag),
+                    int(self.ack_flag),
+                    int(self.fin_flag),
+                    self.seq_number,
+                    self.ack_number,
+                    self.size)
