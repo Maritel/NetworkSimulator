@@ -33,30 +33,28 @@ class Flow(object):
         self.handshake_source_n_tries = 0
         self.handshake_destination_n_tries = 0
 
-    def make_packet(self, packet_type):
+    def make_packet(self, packet_type, from_source=True):
         size = 8192 if packet_type == 'data' else 512
-        p = Packet(i=self.i + 'P' + str(self.packet_counter),
-                   source=self.source,
-                   destination=self.destination,
+        from_string = 'S' if from_source else 'D'
+        p = Packet(i=self.i + from_string + 'P' + str(self.packet_counter),
+                   source=self.source if from_source else self.destination,
+                   destination=self.destination if from_source else self.source,
                    flow=self,
                    packet_type=packet_type,
                    size=size)
         self.packet_counter += 1
         return p
 
-    def is_handshake_done(self):
-        return self.handshake_status == 3
-
-    def perform_handshake(self, t, level):
+    def handshake_send(self, t, level):
         if level == 1:
             # Source needs to send Syn.
             if self.handshake_status >= 2:
                 return  # SRC received SynAck so nothing happens.
-            p = self.make_packet(packet_type='h1')
+            p = self.make_packet(packet_type='h1', from_source=True)
             self.source.link.on_packet_entry(t, p)
             if self.debug:
                 print("t={}, Flow {}, {} sends handshake packet {}".
-                      format(t, self, self.source, p))
+                      format(round(t, 6), self, self.source, p))
 
             # Specify a time to try this again.
             wait_time = self.handshake_base_wait_time * \
@@ -67,11 +65,11 @@ class Flow(object):
             # Destination needs to send SynAck.
             if self.handshake_status >= 3:
                 return  # DST received Ack so nothing happens.
-            p = self.make_packet(packet_type='h2')
+            p = self.make_packet(packet_type='h2', from_source=False)
             self.destination.link.on_packet_entry(t, p)
             if self.debug:
                 print("t={}, Flow {}, {} sends handshake packet {}".
-                      format(t, self, self.destination, p))
+                      format(round(t, 6), self, self.destination, p))
 
             # Specify a time to try this again.
             wait_time = self.handshake_base_wait_time * \
@@ -80,18 +78,14 @@ class Flow(object):
             self.em.enqueue(HandshakeRetry(t, flow=self, level=level))
         else:  # level = 3
             # SRC needs to send Ack.
-            p = self.make_packet(packet_type='h3')
+            p = self.make_packet(packet_type='h3', from_source=True)
             self.source.link.on_packet_entry(t, p)
 
             if self.debug:
                 print("t={}: Flow {}, {} sends handshake packet {}".
-                      format(t, self, self.source, p))
+                      format(round(t, 6), self, self.source, p))
 
-            # Specify at ime to try this again
-            wait_time = self.handshake_base_wait_time * \
-                        2 ** self.handshake_source_n_tries
-            self.handshake_source_n_tries += 1
-            self.em.enqueue(HandshakeRetry(t, flow=self, level=level))
+            # SRC doesn't try this again unless prompted by re-reception of h2.
 
     def consider_send(self, t):
         if self.amount_left > 0 and \
@@ -99,11 +93,11 @@ class Flow(object):
 
             # If handshake status is 0, 1, 2, we don't do anything.
             if self.handshake_status == -1:
-                self.perform_handshake(t, 1)
-            elif self.is_handshake_done():
-                # SRC can send freely now
-
-                p = self.make_packet(packet_type='data')
+                self.handshake_send(t, 1)
+            elif self.handshake_status >= 2:
+                # SRC should be sending, although they might not get acks if h3
+                # was dropped.
+                p = self.make_packet(packet_type='data', from_source=True)
 
                 self.outstanding_packets.add(p)
 
@@ -116,7 +110,7 @@ class Flow(object):
                 self.consider_send(t)  # Send as much as possible.
 
     def on_source_reception(self, t, p):
-        if p.packet_type == 'ack' and self.is_handshake_done():
+        if p.packet_type == 'ack' and self.handshake_status >= 2:
             acked_packet = p.info
             if acked_packet in self.outstanding_packets:
                 self.outstanding_packets.remove(acked_packet)
@@ -124,20 +118,23 @@ class Flow(object):
                 self.consider_send(t)
         elif p.packet_type == 'h2':
             self.handshake_status = max(self.handshake_status, 2)
-            self.perform_handshake(t, level=3)
+            self.handshake_send(t, level=3)
+            self.consider_send(t)  # Start trying to send data.
         else:
             assert False
 
     def on_destination_reception(self, t, p):
-        if p.packet_type == 'data' and self.is_handshake_done():
-            ack_packet = self.make_packet(packet_type='ack')
+        if p.packet_type == 'data' and self.handshake_status >= 3:
+            # Don't acknowledge data if h3 hasn't occurred.
+            ack_packet = self.make_packet(packet_type='ack', from_source=False)
+            ack_packet.info = p
             if self.debug:
                 print("t={}: {}: creating ack packet: {}".
                       format(round(t, 6), self.i, ack_packet))
             self.destination.link.on_packet_entry(t, ack_packet)
         elif p.packet_type == 'h1':
             self.handshake_status = max(self.handshake_status, 1)
-            self.perform_handshake(t, level=2)
+            self.handshake_send(t, level=2)
         elif p.packet_type == 'h3':
             self.handshake_status = max(self.handshake_status, 3)
         else:
@@ -155,7 +152,6 @@ class Flow(object):
             if self.debug:
                 print("t={}: {}: ack timeout for packet: {}".
                       format(round(t, 6), self.i, timed_out_packet))
-
         else:
             pass  # Was previously acknowledged successfully.
 

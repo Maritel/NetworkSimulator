@@ -76,8 +76,8 @@ class EventManager(object):
     def enqueue(self, event):
         self.event_queue.put(event)
 
-    def run(self):
-        while not self.event_queue.empty():
+    def run(self, max_time=100000):
+        while not self.event_queue.empty() and self.current_time <= max_time:
             event = self.event_queue.get()
             self.current_time = event.t
 

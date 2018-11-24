@@ -1,5 +1,8 @@
 from events import EventManager
 from file_input import read_network
+from io import StringIO
+from contextlib import redirect_stdout
+
 
 if __name__ == '__main__':
     em = EventManager()
@@ -12,8 +15,11 @@ if __name__ == '__main__':
     # host_2.link = link
     # flow = Flow(em, 'F1', host_1, host_2, 8 * 20 * 1024 * 1024, debug=False)
     # em.enqueue(FlowConsiderSend(0, flow))
-    
-    em.run()
+
+    trap = StringIO()
+    with redirect_stdout(trap):
+        em.run()
+
     print(em.current_time)
 
 
