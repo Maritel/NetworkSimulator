@@ -1,3 +1,4 @@
+from congestion_control import StopAndWait
 from events import EventManager
 from host import Host
 from link import Link
@@ -22,7 +23,7 @@ l1_a = Link(em, 'L1_a', host_1, p2, 10485760, 0.01, 524288, debug=False)
 l1_b = Link(em, 'L1_b', host_2, p1, 10485760, 0.01, 524288, debug=False)
 host_1.link = l1_a
 host_2.link = l1_b
-flow = Flow(em, 'F1', host_1, host_2, DATA_PACKET_SIZE, 1, debug=True)
+flow = Flow(em, 'F1', host_1, host_2, DATA_PACKET_SIZE, 1, StopAndWait(), debug=True)
 em.run()
 
 # Packets sent by host 1
