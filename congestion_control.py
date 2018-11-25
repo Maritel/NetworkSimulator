@@ -36,8 +36,9 @@ class StopAndWait(CongestionControl):
         return 1
     
     def dupack(self):
-        # dupACK is impossible. If you got an ACK, it must be a posACK
-        assert False
+        # Even though the window size is 1, dupACKs are still possible
+        # (edge cases)
+        return False, 1
     
     def ack_timeout(self):
         return 1
