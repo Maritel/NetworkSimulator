@@ -55,6 +55,8 @@ class FlowEnd(object):
         self.rtt_sample_seq = None
         # Time the packet was sent
         self.rtt_sample_send_time = None
+        self.srtt = None   # Smoothed RTT
+        self.rttvar = None # Variance in RTT
 
         #
         # OPERATION PARAMETERS
@@ -73,9 +75,17 @@ class FlowEnd(object):
             self.rtt_sample_seq = packet.seq_number
             self.rtt_sample_send_time = t
 
-    def on_rtt_sample(self, packet, rtt):
+    def on_rtt_sample(self, packet, rtt):        
+        # Update srtt and rttvar (RFC 6298)
+        if self.srtt == None:
+            self.srtt = rtt
+            self.rttvar = rtt / 2
+        else:
+            self.rttvar = (1-1/4) * self.rttvar + 1/4 * abs(self.srtt - rtt)
+            self.srtt = (1-1/8) * self.srtt + 1/8 * rtt
         if self.debug:
             print('RTT sample: {} on pkt = {}'.format(rtt, packet))
+            print('New SRTT = {}, RTTVAR = {}'.format(self.srtt, self.rttvar))
 
     def act(self, t):
         if not self.is_established():
