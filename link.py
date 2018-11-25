@@ -14,7 +14,7 @@ class Link(object):
         self.rate = rate  # bits per second
         self.delay = delay  # seconds
 
-        self.usable = True  # is this link physically usable? could be disabled
+        self.usable = True  # Whether the link accepts new packets
         self.buffer = deque()
         self.buffer_usage = 0
         self.buffer_capacity = buffer_capacity  # bits
@@ -44,27 +44,24 @@ class Link(object):
             self.transmit_next_packet(t)
 
     def transmit_next_packet(self, t):
-        if self.usable:
-            # Only pay the transmission delay here.
-            p = self.buffer[0]
-            self.em.enqueue(LinkBufferRelease(t + p.size / self.rate, self))
+        # Only pay the transmission delay here.
+        p = self.buffer[0]
+        self.em.enqueue(LinkBufferRelease(t + p.size / self.rate, self))
 
     def on_buffer_release(self, t):
-        if self.usable:
-            p = self.buffer.popleft()
-            self.buffer_usage -= p.size
+        p = self.buffer.popleft()
+        self.buffer_usage -= p.size
 
-            self.em.enqueue(LinkExit(t + self.delay, self, p))
-            if len(self.buffer) > 0:
-                self.transmit_next_packet(t)
+        self.em.enqueue(LinkExit(t + self.delay, self, p))
+        if len(self.buffer) > 0:
+            self.transmit_next_packet(t)
 
     def on_packet_exit(self, t, exiting_packet):
-        if self.usable:
-            if self.debug:
-                print("t={}: Link {} packet exit, details: {}".
-                      format(round(t, 6), self, exiting_packet))
+        if self.debug:
+            print("t={}: Link {} packet exit, details: {}".
+                    format(round(t, 6), self, exiting_packet))
 
-            self.dest.on_reception(t, exiting_packet)
+        self.dest.on_reception(t, exiting_packet)
 
     def __str__(self):
         return "{} ({} -> {})".format(self.i, self.source.i, self.dest.i)
