@@ -51,9 +51,6 @@ class FlowEnd(object):
         self.cc = cc
 
         # RTT sampling parameters
-        # Sequence number of last packet we attempted to sample. We use this
-        # to make sure we don't sample a retransmitted packet
-        self.rtt_last_attempted_sample_seq = -float('inf')
         # Sequence number of packet currently being sampled
         self.rtt_sample_seq = None
         # Time the packet was sent
@@ -69,6 +66,16 @@ class FlowEnd(object):
 
     def is_established(self):
         return self.send_first_unacked > self.send_iss
+
+    def attempt_rtt_sample(self, t, packet):
+        if self.rtt_sample_seq == None:
+            # Sample this packet
+            self.rtt_sample_seq = packet.seq_number
+            self.rtt_sample_send_time = t
+
+    def on_rtt_sample(self, packet, rtt):
+        if self.debug:
+            print('RTT sample: {} on pkt = {}'.format(rtt, packet))
 
     def act(self, t):
         if not self.is_established():
@@ -102,18 +109,7 @@ class FlowEnd(object):
                       .format(round(t, 6), self, syn_packet))
 
             # RTT sampling
-            if self.rtt_sample_seq == None and \
-                    syn_packet.seq_number > self.rtt_last_attempted_sample_seq:
-                # The second conditional is required, to make sure we don't
-                # sample a retransmitted packet
-                # Sample this packet
-                self.rtt_last_attempted_sample_seq = syn_packet.seq_number
-                self.rtt_sample_seq = syn_packet.seq_number
-                self.rtt_sample_send_time = t
-            elif syn_packet.seq_number == self.rtt_sample_seq:
-                # Do not sample a retransmitted packet
-                self.rtt_sample_seq = None
-                self.rtt_sample_send_time = None
+            self.attempt_rtt_sample(t, syn_packet)
 
         else:  # I'm established. Send a data packet if I need to.
             if self.send_next > self.last_seq_number:
@@ -147,23 +143,12 @@ class FlowEnd(object):
                       .format(round(t, 6), self, data_packet))
             
             # RTT sampling
-            if self.rtt_sample_seq == None and \
-                    data_packet.seq_number > self.rtt_last_attempted_sample_seq:
-                # The second conditional is required, to make sure we don't
-                # sample a retransmitted packet
-                # Sample this packet
-                self.rtt_last_attempted_sample_seq = data_packet.seq_number
-                self.rtt_sample_seq = data_packet.seq_number
-                self.rtt_sample_send_time = t
-            elif data_packet.seq_number == self.rtt_sample_seq:
-                # Do not sample a retransmitted packet
-                self.rtt_sample_seq = None
-                self.rtt_sample_send_time = None
+            self.attempt_rtt_sample(t, data_packet)
 
             # Update internal state.
             self.send_next += 1
             self.act(t)  # Utilize the entire window.
-
+    
     def on_ack_timeout(self, t, seq_number):
         if self.debug:
             print("t={}: {} ack timeout on seq# {}"
@@ -228,9 +213,7 @@ class FlowEnd(object):
                 # NB: The only case that self.rtt_sample_seq is None is
                 # when we get an ACK without ever having sent our own packet.
                 # That's when we're the destination getting a SYN+ACK.
-                rtt = t - self.rtt_sample_send_time
-                # print('RTT sample: {} on pkt = {}, last attempted = {}'.format(
-                #         rtt, received_packet, self.rtt_last_attempted_sample_seq))
+                self.on_rtt_sample(received_packet, t - self.rtt_sample_send_time)
                 self.rtt_sample_seq = None
                 self.rtt_sample_send_time = None
 
@@ -274,6 +257,8 @@ class FlowEnd(object):
             # Update internal state.
             self.send_first_unacked = self.send_iss
             self.send_next = self.send_iss + 1
+
+            self.attempt_rtt_sample(t, response_packet)
 
             # Can't act, since we're not established.
 
