@@ -50,6 +50,15 @@ class FlowEnd(object):
         # Congestion control algorithm.
         self.cc = cc
 
+        # RTT sampling parameters
+        # Sequence number of last packet we attempted to sample. We use this
+        # to make sure we don't sample a retransmitted packet
+        self.rtt_last_attempted_sample_seq = -float('inf')
+        # Sequence number of packet currently being sampled
+        self.rtt_sample_seq = None
+        # Time the packet was sent
+        self.rtt_sample_send_time = None
+
         #
         # OPERATION PARAMETERS
         #
@@ -92,6 +101,20 @@ class FlowEnd(object):
                 print("t={}: {} sends packet: {}"
                       .format(round(t, 6), self, syn_packet))
 
+            # RTT sampling
+            if self.rtt_sample_seq == None and \
+                    syn_packet.seq_number > self.rtt_last_attempted_sample_seq:
+                # The second conditional is required, to make sure we don't
+                # sample a retransmitted packet
+                # Sample this packet
+                self.rtt_last_attempted_sample_seq = syn_packet.seq_number
+                self.rtt_sample_seq = syn_packet.seq_number
+                self.rtt_sample_send_time = t
+            elif syn_packet.seq_number == self.rtt_sample_seq:
+                # Do not sample a retransmitted packet
+                self.rtt_sample_seq = None
+                self.rtt_sample_send_time = None
+
         else:  # I'm established. Send a data packet if I need to.
             if self.send_next > self.last_seq_number:
                 return  # All the data is sent.
@@ -122,6 +145,20 @@ class FlowEnd(object):
             if self.debug:
                 print("t={}: {} sends packet: {}"
                       .format(round(t, 6), self, data_packet))
+            
+            # RTT sampling
+            if self.rtt_sample_seq == None and \
+                    data_packet.seq_number > self.rtt_last_attempted_sample_seq:
+                # The second conditional is required, to make sure we don't
+                # sample a retransmitted packet
+                # Sample this packet
+                self.rtt_last_attempted_sample_seq = data_packet.seq_number
+                self.rtt_sample_seq = data_packet.seq_number
+                self.rtt_sample_send_time = t
+            elif data_packet.seq_number == self.rtt_sample_seq:
+                # Do not sample a retransmitted packet
+                self.rtt_sample_seq = None
+                self.rtt_sample_send_time = None
 
             # Update internal state.
             self.send_next += 1
@@ -185,6 +222,18 @@ class FlowEnd(object):
                 self.window_size = self.cc.posack()
 
             self.clear_redundant_timeouts(received_packet.ack_number)  # clean
+
+            if self.rtt_sample_seq is not None and \
+                    received_packet.ack_number > self.rtt_sample_seq:
+                # NB: The only case that self.rtt_sample_seq is None is
+                # when we get an ACK without ever having sent our own packet.
+                # That's when we're the destination getting a SYN+ACK.
+                rtt = t - self.rtt_sample_send_time
+                # print('RTT sample: {} on pkt = {}, last attempted = {}'.format(
+                #         rtt, received_packet, self.rtt_last_attempted_sample_seq))
+                self.rtt_sample_seq = None
+                self.rtt_sample_send_time = None
+
 
         #
         # OPERATIONS DEPENDING ON WHETHER WE'RE ESTABLISHED
