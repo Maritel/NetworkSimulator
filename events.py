@@ -67,6 +67,13 @@ class LinkExit(Event):
         self.packet = packet
 
 
+class LinkSetUsable(Event):
+    def __init__(self, t, link, usable):
+        super().__init__(t)
+        self.link = link
+        self.usable = usable
+
+
 class EventManager(object):
     def __init__(self):
         self.event_queue = queue.PriorityQueue()
@@ -90,5 +97,7 @@ class EventManager(object):
                     ev.link.on_buffer_release(ev.t)
                 elif type(ev) is LinkExit:
                     ev.link.on_packet_exit(ev.t, ev.packet)
+                elif type(ev) is LinkSetUsable:
+                    ev.link.set_usable(ev.usable)
                 else:
                     pass

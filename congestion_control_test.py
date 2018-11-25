@@ -1,5 +1,5 @@
 from congestion_control import StopAndWait, Reno
-from events import EventManager
+from events import EventManager, LinkSetUsable
 from host import Host
 from link import Link
 from flow import Flow
@@ -35,5 +35,58 @@ def consistency_test(cc):
     assert sr.seqs == set(range(n_data_packets + 1))
     # print(sr.seqs)
 
-consistency_test(StopAndWait())
-consistency_test(Reno())
+
+def dropped_syn_test(cc):
+    n_data_packets = 5
+
+    em = EventManager()
+    host_1 = Host(em, 'H1', debug=False)
+    host_2 = Host(em, 'H2', debug=False)
+    sr = SeqNumberRecorder(host_2)
+    l1_a = Link(em, 'L1_a', host_1, sr, DATA_PACKET_SIZE * 1000, 0.01,
+                5 * DATA_PACKET_SIZE, debug=False)
+    l1_b = Link(em, 'L1_b', host_2, host_1, DATA_PACKET_SIZE * 1000, 0.01,
+                5 * DATA_PACKET_SIZE, debug=False)
+    l1_a.set_usable(False)
+    host_1.link = l1_a
+    host_2.link = l1_b
+    flow = Flow(em, 'F1', host_1, host_2, n_data_packets * DATA_PACKET_SIZE, 1,
+                cc, debug=False)
+    em.enqueue(LinkSetUsable(2, l1_a, True))
+    em.run()
+
+    assert sr.seqs == set(range(n_data_packets + 1))
+    # print(sr.seqs)
+
+
+def dropped_synack_test(cc):
+    n_data_packets = 5
+
+    em = EventManager()
+    host_1 = Host(em, 'H1', debug=False)
+    host_2 = Host(em, 'H2', debug=False)
+    sr = SeqNumberRecorder(host_2)
+    l1_a = Link(em, 'L1_a', host_1, sr, DATA_PACKET_SIZE * 1000, 0.01,
+                5 * DATA_PACKET_SIZE, debug=False)
+    l1_b = Link(em, 'L1_b', host_2, host_1, DATA_PACKET_SIZE * 1000, 0.01,
+                5 * DATA_PACKET_SIZE, debug=False)
+    # If we make the reverse link unusable, host_2 can never send syn+ack...
+    l1_b.set_usable(False)
+    host_1.link = l1_a
+    host_2.link = l1_b
+    flow = Flow(em, 'F1', host_1, host_2, n_data_packets * DATA_PACKET_SIZE, 1,
+                cc, debug=True)
+    em.enqueue(LinkSetUsable(2, l1_b, True))    
+    em.run()
+
+    assert sr.seqs == set(range(n_data_packets + 1))
+    # print(sr.seqs)
+
+
+
+for cc in [StopAndWait(), Reno()]:
+    consistency_test(cc)
+    print('Dropped syn test for {}'.format(cc))
+    dropped_syn_test(cc)
+    print('Dropped synack test for {}'.format(cc))
+    dropped_synack_test(cc)
