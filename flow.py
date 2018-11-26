@@ -75,7 +75,7 @@ class FlowEnd(object):
             self.rtt_sample_seq = packet.seq_number
             self.rtt_sample_send_time = t
 
-    def on_rtt_sample(self, packet, rtt):        
+    def on_rtt_sample(self, packet, rtt, t):
         # Update srtt and rttvar (RFC 6298)
         if self.srtt == None:
             self.srtt = rtt
@@ -86,6 +86,9 @@ class FlowEnd(object):
         if self.debug:
             print('RTT sample: {} on pkt = {}'.format(rtt, packet))
             print('New SRTT = {}, RTTVAR = {}'.format(self.srtt, self.rttvar))
+
+        ### Per-flow packet round-trip delay ###
+        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|RTT|{}'.format(t, self.srtt))
 
     def act(self, t):
         if not self.is_established():
@@ -108,7 +111,7 @@ class FlowEnd(object):
             self.em.enqueue(ack_timeout_event)
 
             # Send the packet.
-            self.host.link.on_packet_entry(t, syn_packet)
+            self.send(t, syn_packet)
 
             # Update internal state.
             self.send_first_unacked = self.send_iss
@@ -147,18 +150,18 @@ class FlowEnd(object):
             self.em.enqueue(ack_timeout_event)
 
             # Send the packet.
-            self.host.link.on_packet_entry(t, data_packet)
+            self.send(t, data_packet)
             if self.debug:
                 print("t={}: {} sends packet: {}"
                       .format(round(t, 6), self, data_packet))
-            
+
             # RTT sampling
             self.attempt_rtt_sample(t, data_packet)
 
             # Update internal state.
             self.send_next += 1
             self.act(t)  # Utilize the entire window.
-    
+
     def on_ack_timeout(self, t, seq_number):
         if self.debug:
             print("t={}: {} ack timeout on seq# {}"
@@ -223,7 +226,7 @@ class FlowEnd(object):
                 # NB: The only case that self.rtt_sample_seq is None is
                 # when we get an ACK without ever having sent our own packet.
                 # That's when we're the destination getting a SYN+ACK.
-                self.on_rtt_sample(received_packet, t - self.rtt_sample_send_time)
+                self.on_rtt_sample(received_packet, t - self.rtt_sample_send_time, t)
                 self.rtt_sample_seq = None
                 self.rtt_sample_send_time = None
 
@@ -262,7 +265,7 @@ class FlowEnd(object):
             self.em.enqueue(ack_timeout_event)
 
             # Send the packet.
-            self.host.link.on_packet_entry(t, response_packet)
+            self.send(t, response_packet)
 
             # Update internal state.
             self.send_first_unacked = self.send_iss
@@ -295,13 +298,19 @@ class FlowEnd(object):
                            size=CONTROL_PACKET_SIZE)
 
                 # Do NOT schedule a timeout, just send the packet.
-                self.host.link.on_packet_entry(t, response_packet)
+                self.send(t, response_packet)
 
                 if self.debug:
                     print("t={}: {} sends packet: {}"
                           .format(round(t, 6), self, response_packet))
 
             self.act(t)  # May want to send data here.
+
+    def send(self, t, p):
+        self.host.send_packet(t, p)
+
+        ### Per-flow send rate ###
+        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|SEND|{}'.format(t, p.size))
 
     def clear_redundant_timeouts(self, first_unacked_number):
         invalidated_seq_numbers = []

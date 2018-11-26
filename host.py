@@ -14,7 +14,6 @@ class Host(object):
         self.link = link
 
     def on_reception(self, t, p):
-
         assert p.receiver == self
         assert p.flow.src_host == self or p.flow.dst_host == self
 
@@ -22,6 +21,17 @@ class Host(object):
             p.flow.src.on_reception(t, p)
         else:
             p.flow.dst.on_reception(t, p)
+
+        ### Per-flow receive rate ###
+        self.em.log_it('FLOW|{}'.format(p.flow.i), 'T|{}|RCVE|{}'.format(t, p.size))
+
+        ### Per-host receive rate ###
+        self.em.log_it('HOST|{}'.format(self.i), 'T|{}|RCVE|{}'.format(t, p.size))
+
+    def send_packet(self, t, response_packet):
+        self.link.on_packet_entry(t, response_packet)
+        ### Per-host send rate ###
+        self.em.log_it('HOST|{}'.format(self.i), 'T|{}|SEND|{}'.format(t, response_packet.size))
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__

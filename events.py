@@ -1,8 +1,9 @@
 import queue
+import datetime
+import time
 
 
 class Event(object):
-
     def __init__(self, t):
         self.t = t
         self.valid = True
@@ -75,9 +76,12 @@ class LinkSetUsable(Event):
 
 
 class EventManager(object):
-    def __init__(self):
+    def __init__(self, logging=True):
         self.event_queue = queue.PriorityQueue()
         self.current_time = 0
+
+        self.logging = logging
+        self.initialize_log()
 
     def enqueue(self, event):
         self.event_queue.put(event)
@@ -88,7 +92,6 @@ class EventManager(object):
             self.current_time = ev.t
 
             if ev.is_valid():
-
                 if type(ev) is FlowEndAct:
                     ev.flow_end.act(ev.t)
                 elif type(ev) is AckTimeout:
@@ -101,3 +104,21 @@ class EventManager(object):
                     ev.link.set_usable(ev.usable)
                 else:
                     pass
+
+    def initialize_log(self):
+        if self.logging:
+            self.log = open('log_{}.txt'.format(int(time.time())), 'w')
+
+            curr = str(datetime.datetime.now())
+            print('-' * 8, curr, '-' * 8, file=self.log)
+            print('-' * 8, 'BEGIN RUN', '-' * 8, file=self.log)
+
+    def log_it(self, component, info):
+        if self.logging:
+            line = '|'.join((component, info))
+            print(line, file=self.log)
+
+    def __del__(self):
+        if self.logging:
+            print('-' * 8, 'END RUN', '-' * 8, file=self.log)
+            self.log.close()

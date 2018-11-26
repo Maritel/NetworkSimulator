@@ -31,10 +31,12 @@ class Link(object):
         if self.buffer_usage + p.size > self.buffer_capacity:
             if self.debug:
                 print("t={}: Link {} lost a packet.".format(round(t, 6), self))
+            ### Per-link packet loss ###
+            self.em.log_it('LINK|{}'.format(self.i), 'T|{}|LOSS|1'.format(t))
             return  # Packet loss.
 
         self.buffer.append(p)
-        self.buffer_usage += p.size
+        self.update_buffer_usage(t, p.size)
 
         if self.debug:
             print('t={}, Link {} enqueueing packet into buffer: {}'.
@@ -50,11 +52,16 @@ class Link(object):
 
     def on_buffer_release(self, t):
         p = self.buffer.popleft()
-        self.buffer_usage -= p.size
+        self.update_buffer_usage(t, -p.size)
 
         self.em.enqueue(LinkExit(t + self.delay, self, p))
         if len(self.buffer) > 0:
             self.transmit_next_packet(t)
+
+    def update_buffer_usage(self, t, amount):
+        self.buffer_usage += amount
+        ### Per-link buffer occupancy ###
+        self.em.log_it('LINK|{}'.format(self.i), 'T|{}|BUFF|{}'.format(t, amount))
 
     def on_packet_exit(self, t, exiting_packet):
         if self.debug:
@@ -62,9 +69,11 @@ class Link(object):
                     format(round(t, 6), self, exiting_packet))
 
         self.dest.on_reception(t, exiting_packet)
+        ### Per-link flow rate ###
+        self.em.log_it('LINK|{}'.format(self.i), 'T|{}|FLOW|{}'.format(t, exiting_packet.size))
 
     def __str__(self):
         return "{} ({} -> {})".format(self.i, self.source.i, self.dest.i)
-    
+
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
