@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
 import os
 
+# TODO: Verify correctness by matching to time traces for Test Case 1
+# sub TODO: Make sure that flow send/receive rates are computed correctly. Figure out flow ends vs. flow???
+# sub TODO: Make sure that host send/receive rates and link flow rates don't need to be computed with some window size?
+# TODO: Refactor code to be more modular and allow for plotting of specific statistics.
+
 if __name__ == '__main__':
     file_names = [f for f in os.listdir('.') if os.path.isfile(f) and 'log' in f]
 
@@ -42,6 +47,8 @@ if __name__ == '__main__':
             time = float(time)
             x.append(time)
             total += int(size)
+            # TODO: This may be wrong. Might need to be size / (time - time_prev)
+            #       for the amount sent over the last time delta
             y.append(total / time)
 
         plt.subplot(rows, cols, index)
