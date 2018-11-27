@@ -9,23 +9,36 @@ class Router(object):
         self.table = table  # dict(ID -> ID)
         self.links = []  # links that this router can access
         self.debug = debug
+        # defined as dict (key, value) = (router, [(router, cost)])
+        self.network = {i: []}
 
-    def update_table(self, network):
-        """
-        Actual link state not implemented yet
-        network defined as dict (key, value) = (router, [(router, cost)])
-        referenced by id
-
-        updates routing table
-        """
-        N = len(network)
+    def add_link(self, link):
+        self.links.append(link)
+        self.network[i].append((link.dest, link.delay + link.buffer_usage/link.rate))
+        
+    def on_packet_reception(self, t, p, linkState=False):
+        if self.debug:
+            print("t={}: {}: packet received: {}".
+                  format(round(t, 6), self.i, p))
+        if(linkState):
+            if(p.data == self.network[p.sender]):
+                return
+            self.network[p.sender] = p.data
+            for nextLink in self.links:
+                nextLink.on_packet_entry(t, p)
+        else:
+            nextLink = self.links[self.table[p.destination.id]]
+            nextLink.on_packet_entry(t, p)
+        
+    def update_table(self):
+        N = len(self.network)
         dist = {self.i: 0} #not in dist = inf
         child = {self.i: []} #store self as -1 for termination
         vis = {self.i}
         pq = PriorityQueue() #holds (dist, (start, end))
         assert(pq.empty())
 
-        for router in network[self.i]:
+        for router in self.network[self.i]:
             pq.put((router[1], (self.i, router[0])))
 
         while not pq.empty():
@@ -35,7 +48,7 @@ class Router(object):
                 child[top[1][0]].append(top[1][1])
             else:
                 child[top[1][0]] = [top[1][1]]
-            for router in network[top[1][1]]:
+            for router in self.network[top[1][1]]:
                 if(router[0] not in vis):
                     pq.put((top[0] + router[1],
                             (top[1][1], router[0])))
@@ -53,19 +66,3 @@ class Router(object):
         for nxtRt in child[self.i]:
             dfsUpdate(nxtRt, nxtRt)
 
-    def add_link(self, link):
-        self.links.append(link)
-
-    def on_packet_reception(self, t, p):
-        if self.debug:
-            print("t={}: {}: packet received: {}".
-                  format(round(t, 6), self.i, p))
-        # assume self.table is table[destID] = linkID
-        # assume routing is instantaneous
-        # silently fail
-        nextLink = self.links[self.table[p.destination.id]]
-        try:
-            nextLink.on_packet_entry(t, p)
-            return True
-        except:
-            return False

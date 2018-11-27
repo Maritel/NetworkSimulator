@@ -70,7 +70,7 @@ class LinkExit(Event):
 
 class LinkSetUsable(Event):
     def __init__(self, t, link, usable):
-        super().__init__(t)
+n        super().__init__(t)
         self.link = link
         self.usable = usable
 
