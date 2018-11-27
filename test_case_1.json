@@ -69,7 +69,7 @@
             "rate": 12.5e6,
             "delay": 10e-3,
             "buffer_size": 512e3
-        },
+        }
     ],
     "flows": [
         {

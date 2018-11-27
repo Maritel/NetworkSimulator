@@ -1,7 +1,7 @@
 import queue
 import datetime
 import time
-
+from packet import LinkStatePacket
 
 class Event(object):
     def __init__(self, t):
@@ -70,7 +70,7 @@ class LinkExit(Event):
 
 class LinkSetUsable(Event):
     def __init__(self, t, link, usable):
-n        super().__init__(t)
+        super().__init__(t)
         self.link = link
         self.usable = usable
 
@@ -79,16 +79,36 @@ class EventManager(object):
     def __init__(self, logging=True):
         self.event_queue = queue.PriorityQueue()
         self.current_time = 0
-
+        self.max_time = 100000
         self.logging = logging
         self.initialize_log()
+        self.type_count = {} #count the number of packet types
+        self.router_list = {}
 
     def enqueue(self, event):
         self.event_queue.put(event)
+        if type(event) is LinkEntry:
+            if type(event.packet) in self.type_count:
+                self.type_count[type(event.packet)] += 1
+            else:
+                self.type_count[type(event.packet)] = 1
 
-    def run(self, max_time=100000):
-        while not self.event_queue.empty() and self.current_time <= max_time:
+    def still_running(self):
+        return len(self.type_count) == 1 and list(self.type_count.keys())[0] is LinkStatePacket
+            
+    def run(self):
+        print(self.router_list)
+        for router in self.router_list:
+            print([x.i for x in self.router_list[router].links])
+        while not self.still_running() and\
+              not self.event_queue.empty() and\
+              self.current_time <= self.max_time:
             ev = self.event_queue.get()
+            if type(ev) is LinkExit:
+                self.type_count[type(ev.packet)] -= 1
+                if self.type_count[type(ev.packet)] == 0:
+                    del self.type_count[type(ev.packet)]
+
             self.current_time = ev.t
 
             if ev.is_valid():

@@ -16,11 +16,11 @@ if __name__ == '__main__':
     # flow = Flow(em, 'F1', host_1, host_2, 8 * 20 * 1024 * 1024, debug=False)
     # em.enqueue(FlowConsiderSend(0, flow))
 
-    trap = StringIO()
-    with redirect_stdout(trap):
-        em.run()
+    # trap = StringIO()
+    # with redirect_stdout(trap):
+    #     em.run()
 
-    # em.run()
+    em.run()
 
     print(em.current_time)
 

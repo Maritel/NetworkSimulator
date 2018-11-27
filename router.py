@@ -1,34 +1,52 @@
 from queue import PriorityQueue
-
+from host import Host
+from packet import Packet, LinkStatePacket
 
 class Router(object):
     def __init__(self, event_manager, i, table=None, debug=True):
         self.em = event_manager
         self.i = i  # string ID; unique for all components
-        # Routing table for routers
-        self.table = table  # dict(ID -> ID)
+        self.table = table if table != None else {}  # dict of destID -> nextID
         self.links = []  # links that this router can access
         self.debug = debug
-        # defined as dict (key, value) = (router, [(router, cost)])
+        # network defined as dict (key, value) = (router, [(router, cost)])
         self.network = {i: []}
 
     def add_link(self, link):
+        print("link", link.i)
         self.links.append(link)
-        self.network[i].append((link.dest, link.delay + link.buffer_usage/link.rate))
-        
-    def on_packet_reception(self, t, p, linkState=False):
+        self.network[self.i].append((link.dest, link.delay + link.buffer_usage/link.rate))
+        # update table
+        # if contains host then set to host, otherwise copy over new settings
+        if type(link.dest) is Host:
+            self.table[link.dest.i] = link.i
+        else:
+            for dest in link.dest.table:
+                self.table[dest] = link.i
+        print("id", self.i, "table", self.table)
+            
+    def on_reception(self, t, p):
         if self.debug:
             print("t={}: {}: packet received: {}".
                   format(round(t, 6), self.i, p))
-        if(linkState):
+        if type(p) is LinkStatePacket:
             if(p.data == self.network[p.sender]):
                 return
             self.network[p.sender] = p.data
-            for nextLink in self.links:
-                nextLink.on_packet_entry(t, p)
+            self.update_table()
+            try:
+                for nextLink in self.links:
+                    nextLink.on_packet_entry(t, p)
+            except:
+                #silently fail
+                return False
         else:
-            nextLink = self.links[self.table[p.destination.id]]
-            nextLink.on_packet_entry(t, p)
+            try:
+                nextLink = self.links[self.table[p.receiver.i]]
+                nextLink.on_packet_entry(t, p)
+            except:
+                #silently fail
+                return False
         
     def update_table(self):
         N = len(self.network)

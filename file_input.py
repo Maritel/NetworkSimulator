@@ -3,6 +3,7 @@ from link import Link
 from router import Router
 from host import Host
 from flow import Flow
+from packet import LinkStatePacket
 import json
 
 
@@ -73,7 +74,8 @@ def read_network(filename, event_manager):
                     json_flow['start_delay'],
                     cc)
         flows[flow.i] = flow
-
+        
+    event_manager.router_list = routers
     return hosts, routers, links, flows
 
 
