@@ -56,16 +56,17 @@ class Router(object):
     def add_link(self, link):
         self.links.append(link)
 
-    def on_packet_reception(self, t, p):
+    def on_reception(self, t, p):
         if self.debug:
             print("t={}: {}: packet received: {}".
                   format(round(t, 6), self.i, p))
         # assume self.table is table[destID] = linkID
         # assume routing is instantaneous
         # silently fail
-        nextLink = self.links[self.table[p.destination.id]]
+        
+        next_link = self.links[self.table[p.receiver.i]]
         try:
-            nextLink.on_packet_entry(t, p)
+            next_link.on_packet_entry(t, p)
             return True
         except:
             return False
