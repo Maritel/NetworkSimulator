@@ -309,10 +309,6 @@ class FlowEnd(object):
     def send(self, t, p):
         self.host.send_packet(t, p)
         # update event manager count b/c no packet enqueue
-        if type(p) in self.em.type_count:
-            self.em.type_count[type(p)] += 1
-        else:
-            self.em.type_count[type(p)] = 1
         ### Per-flow send rate ###
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|SEND|{}'.format(t, p.size))
 

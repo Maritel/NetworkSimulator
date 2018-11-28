@@ -43,21 +43,10 @@ class Router(object):
             if(p.sender in self.network and set(p.data) == set(self.network[p.sender])):
                 return 
             self.network[p.sender] = p.data
-            """
-            print('--------')
-            print("router {}".format(self.i))
-            for router in self.network:
-                print("other router {}".format(router.i))
-                for tup in self.network[router]:
-                    print(tup[0].i, tup[1], tup[2].i)
-            print('--------')
-            """
+            print("changed")
+
             self.update_table()
-            """
-            for dest in self.table:
-                print(dest.i, self.table[dest].i)
-            print('--------')
-            """
+            
             try:
                 for nextLink in self.links:
                     nextLink.on_packet_entry(t, p)

@@ -42,14 +42,9 @@ if __name__ == '__main__':
 
         ### Per-host send rate ###
         x, y = [], []
-        total = 0
         for time, size in host_send_data:
-            time = float(time)
-            x.append(time)
-            total += int(size)
-            # TODO: This may be wrong. Might need to be size / (time - time_prev)
-            #       for the amount sent over the last time delta
-            y.append(total / time)
+            x.append(float(time))
+            y.append(float(size))
 
         plt.subplot(rows, cols, index)
         index += 1
@@ -64,10 +59,8 @@ if __name__ == '__main__':
         x, y = [], []
         total = 0
         for time, size in host_rcve_data:
-            time = float(time)
-            x.append(time)
-            total += int(size)
-            y.append(total / time)
+            x.append(float(time))
+            y.append(float(size))
 
         plt.subplot(rows, cols, index)
         index += 1
@@ -101,10 +94,8 @@ if __name__ == '__main__':
         x, y = [], []
         total = 0
         for time, size in link_buff_data:
-            time = float(time)
-            x.append(time)
-            total += int(size)
-            y.append(total)
+            x.append(float(time))
+            y.append(float(size))
 
         plt.figure()
         # plt.subplot(rows, cols, index)
@@ -121,10 +112,8 @@ if __name__ == '__main__':
         x, y = [], []
         total = 0
         for time, pkt in link_loss_data:
-            time = float(time)
-            x.append(time)
-            total += int(pkt)
-            y.append(total)
+            x.append(float(time))
+            y.append(int(pkt))
 
         plt.figure()
         index += 1
@@ -141,10 +130,8 @@ if __name__ == '__main__':
         x, y = [], []
         total = 0
         for time, size in link_flow_data:
-            time = float(time)
-            x.append(time)
-            total += int(size)
-            y.append(total / time)
+            x.append(float(time))
+            y.append(float(size))
 
         # plt.subplot(rows, cols, index)
         plt.figure()
@@ -174,10 +161,8 @@ if __name__ == '__main__':
             x, y = [], []
             total = 0
             for time, size in flow_send_data:
-                time = float(time)
-                x.append(time)
-                total += int(size)
-                y.append(total / time)
+                x.append(float(time))
+                y.append(float(size))
 
             plt.subplot(rows, cols, index)
             index += 1
@@ -195,10 +180,8 @@ if __name__ == '__main__':
             x, y = [], []
             total = 0
             for time, size in flow_rcve_data:
-                time = float(time)
-                x.append(time)
-                total += int(size)
-                y.append(total / time)
+                x.append(float(time))
+                y.append(float(size))
 
             plt.subplot(rows, cols, index)
             index += 1
@@ -216,11 +199,8 @@ if __name__ == '__main__':
             x, y = [], []
             total = 0
             for time, delay in flow_rtt_data:
-                time = float(time)
-                delay = float(delay)
-                x.append(time)
-                total += delay
-                y.append(delay)
+                x.append(float(time))
+                y.append(float(delay))
 
             plt.subplot(rows, cols, index)
             index += 1
