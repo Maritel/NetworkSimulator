@@ -19,6 +19,9 @@ class Link(object):
         self.buffer_usage = 0
         self.buffer_capacity = buffer_capacity  # bits
 
+    def __hash__(self):
+        return hash(self.i)
+        
     def set_usable(self, usable_status):
         #  can simulate a physical link cut
         self.usable = usable_status

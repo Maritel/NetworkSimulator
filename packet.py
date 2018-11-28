@@ -39,6 +39,7 @@ class LinkStatePacket(object):
         self.i = i
         self.sender = sender
         self.data = data
+        self.size = 512 #hardcoded
         
     def __str__(self):
         return "(id: {}, sender: {}, data: {})" \

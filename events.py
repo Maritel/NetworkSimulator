@@ -93,19 +93,39 @@ class EventManager(object):
             else:
                 self.type_count[type(event.packet)] = 1
 
-    def still_running(self):
-        return len(self.type_count) == 1 and list(self.type_count.keys())[0] is LinkStatePacket
-            
-    def run(self):
+    def stop_running(self):
+        return False
+    #return len(self.type_count) == 1 and list(self.type_count.keys())[0] is LinkStatePacket
+
+    def run(self, interval=3):
         print(self.router_list)
         for router in self.router_list:
             print([x.i for x in self.router_list[router].links])
-        while not self.still_running() and\
+
+        oldtime = self.current_time
+        while not self.stop_running() and\
               not self.event_queue.empty() and\
               self.current_time <= self.max_time:
+            
+            #send link state packets
+            if(self.current_time - oldtime >= interval):
+                for router in self.router_list:
+                    payload = []
+                    for link in self.router_list[router].links:
+                        payload.append((link.dest, link.delay + link.buffer_usage/link.rate, link))
+                    p = LinkStatePacket("ptmp", self.router_list[router], payload)
+                    for link in self.router_list[router].links:
+                        link.on_packet_entry(self.current_time, p)
+                        if type(p) in self.type_count:
+                            self.type_count[type(p)] += 1
+                        else:
+                            self.type_count[type(p)] = 1
+                oldtime = self.current_time
+
+                
             ev = self.event_queue.get()
             if type(ev) is LinkExit:
-                self.type_count[type(ev.packet)] -= 1
+#                self.type_count[type(ev.packet)] -= 1
                 if self.type_count[type(ev.packet)] == 0:
                     del self.type_count[type(ev.packet)]
 
@@ -124,7 +144,8 @@ class EventManager(object):
                     ev.link.set_usable(ev.usable)
                 else:
                     pass
-
+#            print(self.type_count)
+#print(not self.stop_running(), not self.event_queue.empty(), self.current_time <= self.max_time)
     def initialize_log(self):
         if self.logging:
             self.log = open('log_{}.txt'.format(int(time.time())), 'w')
