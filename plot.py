@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     # Handle link plotting
     link_data = data['LINK']
-    plt.figure()
+    # plt.figure()
     rows = len(link_data)
     cols = 3
     index = 1
@@ -95,6 +95,7 @@ if __name__ == '__main__':
         else:
             link_loss_data = []
         link_flow_data = link_data[link]['FLOW']
+        
 
         ### Per-link buffer occupancy ###
         x, y = [], []
@@ -105,12 +106,14 @@ if __name__ == '__main__':
             total += int(size)
             y.append(total)
 
-        plt.subplot(rows, cols, index)
+        plt.figure()
+        # plt.subplot(rows, cols, index)
         index += 1
         plt.plot(x, y)
         plt.xlabel('Time (s)')
         plt.ylabel('Link buffer (b)')
         plt.title('{}: Link buffer vs. time'.format(link))
+        plt.show()
 
         print('Average buffer occupancy for link {}: {}'.format(link, sum(y)/len(y)))
 
@@ -123,12 +126,13 @@ if __name__ == '__main__':
             total += int(pkt)
             y.append(total)
 
-        plt.subplot(rows, cols, index)
+        plt.figure()
         index += 1
         plt.plot(x, y)
         plt.xlabel('Time (s)')
         plt.ylabel('Packet loss (#pkts)')
         plt.title('{}: Lost packets vs. time'.format(link))
+        plt.show()
 
         if y:
             print('Average lost packets for link {}: {}'.format(link, y[-1]/len(y)))
@@ -142,12 +146,14 @@ if __name__ == '__main__':
             total += int(size)
             y.append(total / time)
 
-        plt.subplot(rows, cols, index)
-        index += 1
+        # plt.subplot(rows, cols, index)
+        plt.figure()
+        # index += 1
         plt.plot(x, y)
         plt.xlabel('Time (s)')
         plt.ylabel('Link flow rate (b/s)')
         plt.title('{}: Link flow rate vs. time'.format(link))
+        plt.show()
 
         print('Average flow rate for link {}: {}'.format(link, sum(y)/len(y)))
 

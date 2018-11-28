@@ -78,7 +78,7 @@
             "destination": "H2",
             "amount": 160e6,
             "start_delay": 0.5,
-            "congestion_control": "Reno"
+            "congestion_control": "StopAndWait"
         }
     ]
 }

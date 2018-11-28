@@ -79,7 +79,7 @@ class EventManager(object):
     def __init__(self, logging=True):
         self.event_queue = queue.PriorityQueue()
         self.current_time = 0
-        self.max_time = 100000
+        self.max_time = 100
         self.logging = logging
         self.initialize_log()
         self.type_count = {} #count the number of packet types
