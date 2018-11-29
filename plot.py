@@ -95,7 +95,8 @@ if __name__ == '__main__':
         total = 0
         for time, size in link_buff_data:
             x.append(float(time))
-            y.append(float(size))
+            total += float(size)
+            y.append(float(total))
 
         plt.figure()
         # plt.subplot(rows, cols, index)

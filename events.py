@@ -74,12 +74,15 @@ class LinkSetUsable(Event):
         self.link = link
         self.usable = usable
 
+class SendLinkState(Event):
+    def __init__(self, t):
+        super().__init__(t)
 
 class EventManager(object):
-    def __init__(self, logging=True):
+    def __init__(self, logging=True, max_time=300):
         self.event_queue = queue.PriorityQueue()
         self.current_time = 0
-        self.max_time = 100
+        self.max_time = max_time
         self.logging = logging
         self.initialize_log()
         self.router_list = {}
@@ -87,41 +90,28 @@ class EventManager(object):
     def enqueue(self, event):
         self.event_queue.put(event)
 
-    def stop_running(self):
-        return False
-
-    def run(self, interval=3):
+    def run(self, interval=5):
         print(self.router_list)
         for router in self.router_list:
             print([x.i for x in self.router_list[router].links])
 
+        self.enqueue(SendLinkState(0.0))
+            
         oldtime = self.current_time
-        while not self.stop_running() and\
-              not self.event_queue.empty() and\
-              self.current_time <= self.max_time:
-            """
-            print("pull event")
-            for router in self.router_list:
-                print("router {}".format(self.router_list[i]))
-                for i in self.router_list[router].table:
-                    print(i[0].i, i[1].i)
-            """
-            #send link state packets
-            if(self.current_time - oldtime >= interval):
+        while not self.event_queue.empty() and self.current_time <= self.max_time:
+            ev = self.event_queue.get()
+            self.current_time = ev.t
+            if type(ev) is SendLinkState:
+                self.enqueue(SendLinkState(ev.t + interval))
                 for router in self.router_list:
                     payload = []
                     for link in self.router_list[router].links:
-                        payload.append((link.dest, link.delay + link.buffer_usage/link.rate, link))
+                        payload.append((link.dest, link.delay + (link.interval_usage/interval)/link.rate, link))
+                        link.interval_usage = 0
                     p = LinkStatePacket("ptmp", self.router_list[router], payload)
                     for link in self.router_list[router].links:
                         link.on_packet_entry(self.current_time, p)
-                oldtime = self.current_time
-                
-            ev = self.event_queue.get()
-
-            self.current_time = ev.t
-
-            if ev.is_valid():
+            elif ev.is_valid():
                 if type(ev) is FlowEndAct:
                     ev.flow_end.act(ev.t)
                 elif type(ev) is AckTimeout:
