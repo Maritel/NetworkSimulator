@@ -137,4 +137,3 @@ class Router(object):
         for nxtRt in child[self]:
             self.table[nxtRt[0]] = nxtRt[1]
             dfsUpdate(nxtRt[0], nxtRt[1])
-
