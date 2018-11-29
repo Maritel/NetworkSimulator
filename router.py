@@ -1,72 +1,139 @@
 from queue import PriorityQueue
-
+from host import Host
+from packet import Packet, LinkStatePacket
 
 class Router(object):
     def __init__(self, event_manager, i, table=None, debug=True):
         self.em = event_manager
         self.i = i  # string ID; unique for all components
-        # Routing table for routers
-        self.table = table  # dict(ID -> ID)
+        self.table = table if table != None else {}  # dict of destHost -> nextRouter
         self.links = []  # links that this router can access
         self.debug = debug
+        # network defined as dict (key, value) = (router, [(router, cost, link)])
+        self.network = {self: []}
 
-    def update_table(self, network):
-        """
-        Actual link state not implemented yet
-        network defined as dict (key, value) = (router, [(router, cost)])
-        referenced by id
+    def __hash__(self):
+        return hash(self.i)
 
-        updates routing table
-        """
-        N = len(network)
-        dist = {self.i: 0} #not in dist = inf
-        child = {self.i: []} #store self as -1 for termination
-        vis = {self.i}
-        pq = PriorityQueue() #holds (dist, (start, end))
+    def __eq__(self, other):
+        return self.i == other.i
+
+    def __lt__(self, other):
+        return True
+    
+    def __gt__(self, other):
+        return False
+    
+    def add_link(self, link):
+        self.links.append(link)
+        self.network[self].append((link.dest, link.delay + link.buffer_usage/link.rate, link))
+        # update table
+        # if contains host then set to host, otherwise copy over new settings
+        if type(link.dest) is Host:
+            self.table[link.dest] = link
+        else:
+            for dest in link.dest.table:
+                self.table[dest] = link
+            
+    def on_reception(self, t, p):
+        if self.debug and type(p) is not LinkStatePacket:
+            print("t={}: {}: {} packet received: {}".
+                  format(round(t, 6), self.i, type(p), p))
+        if type(p) is LinkStatePacket:
+            if(p.sender in self.network and set(p.data) == set(self.network[p.sender])):
+                return 
+            self.network[p.sender] = p.data
+            print("{} changed".format(self.i))
+
+            old = None
+            for i in self.table:
+                if i.i == 'H2':
+                    old = self.table[i]
+            self.update_table()
+            new = None
+            for i in self.table:
+                if i.i == 'H2':
+                    new = self.table[i]
+            print("flip from {}".format(old.i)\
+                  if old is not None and new is not None and old != new else "no flip")
+            
+            
+            try:
+                for nextLink in self.links:
+                    nextLink.on_packet_entry(t, p)
+            except:
+                #silently fail
+                return False
+        else:
+            print("route reg packet")
+            try:
+                nextLink = self.table[p.receiver]
+                nextLink.on_packet_entry(t, p)
+            except:
+                print("routing failed, probably b/c not in table")
+
+            print("routed succesfully")
+        
+    def update_table(self):
+        # network defined as dict (key, value) = (router, [(router, cost, link)])
+        N = len(self.network)
+        
+        print("-------NETWORK-------")
+        comp1 = 0.0
+        comp2 = 0.0
+        for i in self.network:
+            print("node {}".format(i.i))
+            for x in self.network[i]:
+                if(x[2].i == 'L1_a' or x[2].i == 'L3_a'):
+                    comp1 += x[1]
+                if(x[2].i == 'L2_a' or x[2].i == 'L4_a'):
+                    comp2 += x[1]
+            print([(x[0].i, x[1]) for x in self.network[i]])
+        print(comp1)
+        print(comp2)
+        print("---------------------")
+        
+        dist = {self: 0} #not in dist = inf
+        child = {self: []} #children of certain router
+        vis = {self}
+        pq = PriorityQueue() #holds (dist, (start, end, link))
         assert(pq.empty())
 
-        for router in network[self.i]:
-            pq.put((router[1], (self.i, router[0])))
+        for router in self.network[self]:
+            pq.put((router[1], (self, router[0], router[2])))
+            vis.add(router[0])
 
         while not pq.empty():
             top = pq.get()
             dist[top[1][1]] = top[0]
             if(top[1][0] in child):
-                child[top[1][0]].append(top[1][1])
+                child[top[1][0]].append((top[1][1], top[1][2]))
             else:
-                child[top[1][0]] = [top[1][1]]
-            for router in network[top[1][1]]:
-                if(router[0] not in vis):
-                    pq.put((top[0] + router[1],
-                            (top[1][1], router[0])))
-                    vis.add(router[0])
+                child[top[1][0]] = [(top[1][1], top[1][2])]
+            if top[1][1] in self.network:
+                for router in self.network[top[1][1]]:
+                    if(type(top[1][1]) is Router and router[0] not in vis):
+                        pq.put((top[0] + router[1],
+                                (top[1][1], router[0], router[2])))
+                        vis.add(router[0])
 
         #shortest distance information acquired
-
+        """
+        print("router start {}".format(self.i))
+        for rr in child:
+            print(rr.i, [x[0].i for x in child[rr]])
+        """
+        seen = set([])
+        
         def dfsUpdate(n, base):
             if(n not in child):
                 return
             for i in child[n]:
-                self.table[i] = base
-                dfsUpdate(i, base)
+                if i[0] not in seen:
+                    seen.add(i[0])
+                    self.table[i[0]] = base
+                    dfsUpdate(i[0], base)
 
-        for nxtRt in child[self.i]:
-            dfsUpdate(nxtRt, nxtRt)
-
-    def add_link(self, link):
-        self.links.append(link)
-
-    def on_reception(self, t, p):
-        if self.debug:
-            print("t={}: {}: packet received: {}".
-                  format(round(t, 6), self.i, p))
-        # assume self.table is table[destID] = linkID
-        # assume routing is instantaneous
-        # silently fail
-        
-        next_link = self.links[self.table[p.receiver.i]]
-        try:
-            next_link.on_packet_entry(t, p)
-            return True
-        except:
-            return False
+        for nxtRt in child[self]:
+            self.table[nxtRt[0]] = nxtRt[1]
+            dfsUpdate(nxtRt[0], nxtRt[1])

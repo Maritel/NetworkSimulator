@@ -1,15 +1,7 @@
 DATA_PACKET_SIZE = 8192
 CONTROL_PACKET_SIZE = 512
 
-
 class Packet(object):
-    # TYPES OF PACKETS:
-    # 'data'
-    # 'ack'
-    # 'h1' - handshake 1, or Syn sent by SRC
-    # 'h2' - handshake 2, or SynAck sent by DST after receiving h1 from SRC
-    # 'h3' - handshake 3, or Ack sent by SRC after receiving h2 from SRC
-
     def __init__(self, i, flow, sender, receiver, syn_flag, ack_flag, fin_flag,
                  seq_number, ack_number, size):
         self.i = i
@@ -37,5 +29,21 @@ class Packet(object):
                     self.ack_number,
                     self.size)
     
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+class LinkStatePacket(object):
+    def __init__(self, i, sender, data):
+        # sender is the node that is sending the neighbor information
+        # data is the neighbor information
+        self.i = i
+        self.sender = sender
+        self.data = data
+        self.size = 512 #hardcoded
+        
+    def __str__(self):
+        return "(id: {}, sender: {}, data: {})" \
+            .format(self.i, self.sender.i, self.data)
+
     def __eq__(self, other):
         return self.__dict__ == other.__dict__

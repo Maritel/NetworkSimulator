@@ -308,7 +308,7 @@ class FlowEnd(object):
 
     def send(self, t, p):
         self.host.send_packet(t, p)
-
+        # update event manager count b/c no packet enqueue
         ### Per-flow send rate ###
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|SEND|{}'.format(t, p.size))
 

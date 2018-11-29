@@ -1,6 +1,6 @@
 from events import LinkBufferRelease, LinkExit
 from collections import deque
-
+from packet import LinkStatePacket
 
 class Link(object):
     def __init__(self, event_manager, i, source, dest, rate, delay,
@@ -13,12 +13,17 @@ class Link(object):
         self.dest = dest
         self.rate = rate  # bits per second
         self.delay = delay  # seconds
-
+        
         self.usable = True  # Whether the link accepts new packets
         self.buffer = deque()
         self.buffer_usage = 0
         self.buffer_capacity = buffer_capacity  # bits
 
+        self.interval_usage = 0 #total buffer usage since last linkstate req
+
+    def __hash__(self):
+        return hash(self.i)
+        
     def set_usable(self, usable_status):
         #  can simulate a physical link cut
         self.usable = usable_status
@@ -37,8 +42,9 @@ class Link(object):
 
         self.buffer.append(p)
         self.update_buffer_usage(t, p.size)
-
-        if self.debug:
+        self.interval_usage += p.size
+        
+        if self.debug and type(p) is not LinkStatePacket:
             print('t={}, Link {} enqueueing packet into buffer: {}'.
                   format(round(t, 6), self, p.i))
 
@@ -64,7 +70,7 @@ class Link(object):
         self.em.log_it('LINK|{}'.format(self.i), 'T|{}|BUFF|{}'.format(t, amount))
 
     def on_packet_exit(self, t, exiting_packet):
-        if self.debug:
+        if self.debug and type(exiting_packet) is not LinkStatePacket:
             print("t={}: Link {} packet exit, details: {}".
                     format(round(t, 6), self, exiting_packet))
 

@@ -1,31 +1,84 @@
 {
-  "hosts": [
-    {"id": "H1"},
-    {"id": "H2"}
-  ],
-  "routers": [
-    {"id": "R1"},
-    {"id": "R2"},
-    {"id": "R3"},
-    {"id": "R4"}
-  ],
-  "links": [
-    {"id": "L0", "end_a": "H1", "end_b": "R1", "rate": 12.5e6, "delay": 10e-3, "buffer_size": 512e3},
-    {"id": "L1", "end_a": "R1", "end_b": "R2", "rate": 10.0e6, "delay": 10e-3, "buffer_size": 512e3},
-    {"id": "L2", "end_a": "R1", "end_b": "R3", "rate": 10.0e6, "delay": 10e-3, "buffer_size": 512e3},
-    {"id": "L3", "end_a": "R2", "end_b": "R4", "rate": 10.0e6, "delay": 10e-3, "buffer_size": 512e3},
-    {"id": "L4", "end_a": "R3", "end_b": "R4", "rate": 10.0e6, "delay": 10e-3, "buffer_size": 512e3},
-    {"id": "L5", "end_a": "R4", "end_b": "H2", "rate": 12.5e6, "delay": 10e-3, "buffer_size": 512e3}
-  ],
-  "flows": [
-    {
-      "id": "F1",
-      "source": "H1",
-      "destination": "H2",
-      "amount": 160e6,
-      "start_delay": 1.0,
-      "congestion_control": "StopAndWait"
-    }
-  ]
-
+    "hosts": [
+        {
+            "id": "H1"
+        },
+        {
+            "id": "H2"
+        }
+    ],
+    "routers": [
+        {
+            "id": "R1"
+        },
+        {
+            "id": "R2"
+        },
+        {
+            "id": "R3"
+        },
+        {
+            "id": "R4"
+        }
+    ],
+    "links": [
+        {
+            "id": "L0",
+            "end_a": "H1",
+            "end_b": "R1",
+            "rate": 12.5e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L1",
+            "end_a": "R1",
+            "end_b": "R2",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L2",
+            "end_a": "R1",
+            "end_b": "R3",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L3",
+            "end_a": "R2",
+            "end_b": "R4",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L4",
+            "end_a": "R3",
+            "end_b": "R4",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L5",
+            "end_a": "R4",
+            "end_b": "H2",
+            "rate": 12.5e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        }
+    ],
+    "flows": [
+        {
+            "id": "F1",
+            "source": "H1",
+            "destination": "H2",
+            "amount": 160e6,
+            "start_delay": 0.5,
+            "congestion_control": "StopAndWait"
+        }
+    ]
 }
