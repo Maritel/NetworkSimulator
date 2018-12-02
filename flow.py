@@ -104,25 +104,8 @@ class FlowEnd(object):
                        seq_number=self.send_iss,
                        ack_number=None,
                        size=CONTROL_PACKET_SIZE)
-            # Schedule an AckTimeout for this packet.
-            ack_timeout_event = \
-                AckTimeout(t + self.handshake_ack_wait, self, self.send_iss)
-            self.ack_timeout_events[self.send_iss] = ack_timeout_event
-            self.em.enqueue(ack_timeout_event)
 
-            # Send the packet.
-            self.send(t, syn_packet)
-
-            # Update internal state.
-            self.send_first_unacked = self.send_iss
-            self.send_next = self.send_iss + 1
-
-            if self.debug:
-                print("t={}: {} sends packet: {}"
-                      .format(round(t, 6), self, syn_packet))
-
-            # RTT sampling
-            self.attempt_rtt_sample(t, syn_packet)
+            self.send_acknowledgeable_packet(t, syn_packet)
 
         else:  # I'm established. Send a data packet if I need to.
             if self.send_next > self.last_seq_number:
@@ -143,23 +126,9 @@ class FlowEnd(object):
                        seq_number=self.send_next,
                        ack_number=self.receive_next,
                        size=DATA_PACKET_SIZE)
-            # Schedule an AckTimeout
-            ack_timeout_event = \
-                AckTimeout(t + self.data_ack_wait, self, self.send_next)
-            self.ack_timeout_events[self.send_next] = ack_timeout_event
-            self.em.enqueue(ack_timeout_event)
 
-            # Send the packet.
-            self.send(t, data_packet)
-            if self.debug:
-                print("t={}: {} sends packet: {}"
-                      .format(round(t, 6), self, data_packet))
+            self.send_acknowledgeable_packet(t, data_packet)
 
-            # RTT sampling
-            self.attempt_rtt_sample(t, data_packet)
-
-            # Update internal state.
-            self.send_next += 1
             self.act(t)  # Utilize the entire window.
 
     def on_ack_timeout(self, t, seq_number):
@@ -259,25 +228,13 @@ class FlowEnd(object):
                 # Update state
                 self.receive_iss = received_packet.seq_number  # syn seq#
                 self.receive_next = self.receive_iss + 1
+                self.send_next = self.send_iss  # Reset 'next packet' to ISS
 
                 # Modify response packet to change it to SynAck.
                 response_packet.ack_flag = True
                 response_packet.ack_number = self.receive_next
-
-            # Schedule a timeout for the response packet.
-            ack_timeout_event = \
-                AckTimeout(t + self.handshake_ack_wait, self, self.send_iss)
-            self.ack_timeout_events[self.send_iss] = ack_timeout_event
-            self.em.enqueue(ack_timeout_event)
-
-            # Send the packet.
-            self.send(t, response_packet)
-
-            # Update internal state.
-            self.send_first_unacked = self.send_iss
-            self.send_next = self.send_iss + 1
-
-            self.attempt_rtt_sample(t, response_packet)
+            
+            self.send_acknowledgeable_packet(t, response_packet)
 
             # Can't act, since we're not established.
 
@@ -312,7 +269,32 @@ class FlowEnd(object):
 
             self.act(t)  # May want to send data here.
 
+    def send_acknowledgeable_packet(self, t, p):
+        """Send an acknowledgeable packet. Update state such as send_next."""
+        if p.seq_number != self.send_next:
+            print(p, self.send_next)
+            assert False
+
+        # Schedule an AckTimeout
+        ack_timeout_event = \
+            AckTimeout(t + self.data_ack_wait, self, self.send_next)
+        self.ack_timeout_events[self.send_next] = ack_timeout_event
+        self.em.enqueue(ack_timeout_event)
+
+        # RTT sampling
+        self.attempt_rtt_sample(t, p)
+
+        # Update internal state.
+        self.send_next += 1
+
+        if self.debug:
+            print("t={}: {} sends packet: {}".format(round(t, 6), self, p))
+
+        # Send the packet.
+        self.send(t, p)
+
     def send(self, t, p):
+        """Send a packet over the wire. Do not do any acknowledgment processing."""
         self.host.send_packet(t, p)
         # update event manager count b/c no packet enqueue
         ### Per-flow send rate ###

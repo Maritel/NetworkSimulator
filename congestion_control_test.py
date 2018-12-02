@@ -116,13 +116,13 @@ def dropped_data_test(cc):
     host_2 = Host(em, 'H2', debug=False)
     sr = SeqNumberRecorder('S', host_2)
     l1_a = Link(em, 'L1_a', host_1, sr, DATA_PACKET_SIZE * 1000, 0.01,
-                5 * DATA_PACKET_SIZE, debug=True)
+                5 * DATA_PACKET_SIZE, debug=False)
     l1_b = Link(em, 'L1_b', host_2, host_1, DATA_PACKET_SIZE * 1000, 0.01,
                 5 * DATA_PACKET_SIZE, debug=False)
     host_1.link = l1_a
     host_2.link = l1_b
     flow = Flow(em, 'F1', host_1, host_2, n_data_packets * DATA_PACKET_SIZE, 1,
-                cc, debug=True)
+                cc, debug=False)
     # RTT for this connection
     rtt = (0.001 + 0.01) * 2
     em.enqueue(LinkSetUsable(1 + 5 * rtt, l1_a, False))    
