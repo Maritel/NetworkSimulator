@@ -7,7 +7,7 @@ from packet import LinkStatePacket
 import json
 
 
-def read_network(filename, event_manager):
+def read_network(filename, event_manager, debug=False):
     """
     Create a network from input file.
     Add initial events to the event manager.
@@ -25,13 +25,13 @@ def read_network(filename, event_manager):
     for h in j.get('hosts', []):
         i = h['id']
         assert i not in endpts, 'Endpoint with id %s already exists' % i
-        host = Host(event_manager, i)
+        host = Host(event_manager, i, debug)
         endpts[i] = host
         hosts[i] = host
     for r in j.get('routers', []):
         i = r['id']
         assert i not in endpts, 'Endpoint with id %s already exists' % i
-        router = Router(event_manager, i)
+        router = Router(event_manager, i, debug)
         endpts[i] = router
         routers[i] = router
     for l in j.get('links', []):
@@ -42,11 +42,11 @@ def read_network(filename, event_manager):
         i_a = i + '_a'
         i_b = i + '_b'
         link_a = Link(event_manager, i_a, end_a, end_b, l['rate'], l['delay'],
-                      l['buffer_size'])
+                      l['buffer_size'], debug)
         end_a.add_link(link_a)
         links[i_a] = link_a
         link_b = Link(event_manager, i_b, end_b, end_a, l['rate'], l['delay'],
-                      l['buffer_size'])
+                      l['buffer_size'], debug)
         end_b.add_link(link_b)
         links[i_b] = link_b
 
@@ -72,7 +72,8 @@ def read_network(filename, event_manager):
                     destination,
                     json_flow['amount'],
                     json_flow['start_delay'],
-                    cc)
+                    cc,
+                    debug)
         flows[flow.i] = flow
         
     event_manager.router_list = routers
