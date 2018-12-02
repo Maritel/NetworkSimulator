@@ -43,7 +43,8 @@ class Router(object):
             if(p.sender in self.network and set(p.data) == set(self.network[p.sender])):
                 return 
             self.network[p.sender] = p.data
-            print("{} changed".format(self.i))
+            if self.debug:
+                print("{} changed".format(self.i))
 
             old = None
             for i in self.table:
@@ -54,8 +55,9 @@ class Router(object):
             for i in self.table:
                 if i.i == 'H2':
                     new = self.table[i]
-            print("flip from {}".format(old.i)\
-                  if old is not None and new is not None and old != new else "no flip")
+            if self.debug:
+                print("flip from {}".format(old.i)\
+                    if old is not None and new is not None and old != new else "no flip")
             
             try:
                 for nextLink in self.links:
@@ -64,33 +66,40 @@ class Router(object):
                 #silently fail
                 return False
         else:
-            print("route reg packet")
+            if self.debug:
+                print("route reg packet")
             try:
                 nextLink = self.table[p.receiver]
                 nextLink.on_packet_entry(t, p)
             except:
-                print("routing failed, probably b/c not in table")
+                if self.debug:
+                    print("routing failed, probably b/c not in table")
 
-            print("routed succesfully")
+            if self.debug:
+                print("routed succesfully")
         
     def update_table(self):
         # network defined as dict (key, value) = (router, [(router, cost, link)])
         N = len(self.network)
         
-        print("-------NETWORK-------")
+        if self.debug:
+            print("-------NETWORK-------")
         comp1 = 0.0
         comp2 = 0.0
         for i in self.network:
-            print("node {}".format(i.i))
+            if self.debug:
+                print("node {}".format(i.i))
             for x in self.network[i]:
                 if(x[2].i == 'L1_a' or x[2].i == 'L3_a'):
                     comp1 += x[1]
                 if(x[2].i == 'L2_a' or x[2].i == 'L4_a'):
                     comp2 += x[1]
-            print([(x[0].i, x[1]) for x in self.network[i]])
-        print(comp1)
-        print(comp2)
-        print("---------------------")
+            if self.debug:
+                print([(x[0].i, x[1]) for x in self.network[i]])
+        if self.debug:
+            print(comp1)
+            print(comp2)
+            print("---------------------")
         
         dist = {self: 0} #not in dist = inf
         child = {self: []} #children of certain router
