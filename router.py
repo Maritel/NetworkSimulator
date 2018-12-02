@@ -57,7 +57,6 @@ class Router(object):
             print("flip from {}".format(old.i)\
                   if old is not None and new is not None and old != new else "no flip")
             
-            
             try:
                 for nextLink in self.links:
                     nextLink.on_packet_entry(t, p)

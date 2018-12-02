@@ -1,19 +1,26 @@
 import matplotlib.pyplot as plt
 import os
+import sys
 
 # TODO: Verify correctness by matching to time traces for Test Case 1
 # sub TODO: Make sure that flow send/receive rates are computed correctly. Figure out flow ends vs. flow???
 # sub TODO: Make sure that host send/receive rates and link flow rates don't need to be computed with some window size?
 # TODO: Refactor code to be more modular and allow for plotting of specific statistics.
 
-if __name__ == '__main__':
-    file_names = [f for f in os.listdir('.') if os.path.isfile(f) and 'log' in f]
+ctr = 0
 
-    # Get most recent file name
-    file_name = ''
-    for fn in file_names:
-        if file_name == '' or fn > file_name:
-            file_name = fn
+if __name__ == '__main__':
+    if(len(sys.argv) == 1):
+        file_names = [f for f in os.listdir('.') if os.path.isfile(f) and 'log' in f]
+        
+        # Get most recent file name
+        file_name = ''
+        for fn in file_names:
+            if file_name == '' or fn > file_name:
+                file_name = fn
+    else:
+        file_name = sys.argv[1]
+                
 
     data = {}
     with open(file_name) as f:
@@ -72,7 +79,8 @@ if __name__ == '__main__':
         print('Average receive rate for host {}: {}'.format(host, sum(y)/len(y)))
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(str(ctr) + ".png", dpi=200); ctr += 1
+    
 
     # Handle link plotting
     link_data = data['LINK']
@@ -96,6 +104,8 @@ if __name__ == '__main__':
         for time, size in link_buff_data:
             x.append(float(time))
             total += float(size)
+            if(total > 8192):
+                print("exceed buffer limit at {} with buffer size {}".format(float(time), total))
             y.append(float(total))
 
         plt.figure()
@@ -105,7 +115,7 @@ if __name__ == '__main__':
         plt.xlabel('Time (s)')
         plt.ylabel('Link buffer (b)')
         plt.title('{}: Link buffer vs. time'.format(link))
-        plt.show()
+        plt.savefig(str(ctr) + ".png", dpi=200); ctr += 1
 
         print('Average buffer occupancy for link {}: {}'.format(link, sum(y)/len(y)))
 
@@ -122,7 +132,7 @@ if __name__ == '__main__':
         plt.xlabel('Time (s)')
         plt.ylabel('Packet loss (#pkts)')
         plt.title('{}: Lost packets vs. time'.format(link))
-        plt.show()
+        plt.savefig(str(ctr) + ".png", dpi=200); ctr += 1
 
         if y:
             print('Average lost packets for link {}: {}'.format(link, y[-1]/len(y)))
@@ -141,12 +151,12 @@ if __name__ == '__main__':
         plt.xlabel('Time (s)')
         plt.ylabel('Link flow rate (b/s)')
         plt.title('{}: Link flow rate vs. time'.format(link))
-        plt.show()
+        plt.savefig(str(ctr) + ".png", dpi=200); ctr += 1
 
         print('Average flow rate for link {}: {}'.format(link, sum(y)/len(y)))
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(str(ctr) + ".png", dpi=200); ctr += 1
 
     # Handle flow plotting
     flow_data = data['FLOW']
@@ -213,5 +223,5 @@ if __name__ == '__main__':
             print('Average RTT for flow {}: {}'.format(flow, sum(y)/len(y)))
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(str(ctr) + ".png", dpi=200); ctr += 1
 
