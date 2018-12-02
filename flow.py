@@ -193,6 +193,9 @@ class FlowEnd(object):
                 self.send_first_unacked = received_packet.ack_number
                 self.window_size = self.cc.posack()
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
+                if self.send_first_unacked > self.last_seq_number:
+                    # All packets are acked, so this flow is done
+                    self.em.flowend_done(self)
 
             self.clear_redundant_timeouts(received_packet.ack_number)  # clean
 
@@ -362,6 +365,8 @@ class Flow(object):
                            cc=StopAndWait(),
                            debug=self.debug)
 
+        self.em.register_flowend(self.src)
+        self.em.register_flowend(self.dst)
         self.em.enqueue(FlowEndAct(t=self.start_delay, flow_end=self.src))
 
         self.counter = 0

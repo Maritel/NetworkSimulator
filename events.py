@@ -54,9 +54,18 @@ class EventManager(object):
         self.logging = logging
         self.initialize_log()
         self.router_list = {}
+        self.flowends = set()  # Set of flowends left
 
     def enqueue(self, event):
         self.event_queue.put(event)
+
+    def register_flowend(self, flowend):
+        self.flowends.add(flowend)
+        print('Flowend registered:', flowend, 'Set:', list(str(x) for x in self.flowends))
+    
+    def flowend_done(self, flowend):
+        self.flowends.remove(flowend)
+        print('Flowend removed:', flowend, 'Set:', list(str(x) for x in self.flowends))
 
     def run(self, interval=5):
         print(self.router_list)
@@ -66,8 +75,7 @@ class EventManager(object):
         self.enqueue(SendLinkState(0.0))
         # Trick: if linkstate is the only event, do nothing
             
-        oldtime = self.current_time
-        while not self.event_queue.empty() and self.current_time <= self.max_time:
+        while not self.event_queue.empty() and self.flowends and self.current_time <= self.max_time:
             ev = self.event_queue.get()
             self.current_time = ev.t
             if type(ev) is SendLinkState:
