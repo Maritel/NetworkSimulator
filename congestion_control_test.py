@@ -19,7 +19,7 @@ class SeqNumberRecorder:
 def consistency_test(cc):
     n_data_packets = 10000
 
-    em = EventManager()
+    em = EventManager(logging=False)
     host_1 = Host(em, 'H1', debug=False)
     host_2 = Host(em, 'H2', debug=False)
     sr = SeqNumberRecorder('S', host_2)
@@ -40,7 +40,7 @@ def consistency_test(cc):
 def dropped_syn_test(cc):
     n_data_packets = 5
 
-    em = EventManager()
+    em = EventManager(logging=False)
     host_1 = Host(em, 'H1', debug=False)
     host_2 = Host(em, 'H2', debug=False)
     sr = SeqNumberRecorder('S', host_2)
@@ -63,7 +63,7 @@ def dropped_syn_test(cc):
 def dropped_synack_test(cc):
     n_data_packets = 5
 
-    em = EventManager()
+    em = EventManager(logging=False)
     host_1 = Host(em, 'H1', debug=False)
     host_2 = Host(em, 'H2', debug=False)
     sr = SeqNumberRecorder('S', host_2)
@@ -87,7 +87,7 @@ def dropped_synack_test(cc):
 def dropped_ack_of_synack_test(cc):
     n_data_packets = 5
 
-    em = EventManager()
+    em = EventManager(logging=False)
     host_1 = Host(em, 'H1', debug=False)
     host_2 = Host(em, 'H2', debug=False)
     sr = SeqNumberRecorder('S', host_2)
@@ -111,7 +111,7 @@ def dropped_ack_of_synack_test(cc):
 def dropped_data_test(cc):
     n_data_packets = 100
 
-    em = EventManager()
+    em = EventManager(logging=False)
     host_1 = Host(em, 'H1', debug=False)
     host_2 = Host(em, 'H2', debug=False)
     sr = SeqNumberRecorder('S', host_2)

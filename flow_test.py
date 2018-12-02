@@ -14,7 +14,7 @@ class PacketRecorder:
         self.packets.append(p)
         self.next_component.on_reception(t, p)
 
-em = EventManager()
+em = EventManager(logging=False)
 host_1 = Host(em, 'H1', debug=True)
 p1 = PacketRecorder(host_1)
 host_2 = Host(em, 'H2', debug=True)
