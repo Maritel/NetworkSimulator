@@ -193,6 +193,9 @@ class FlowEnd(object):
             print("t={}: {} received packet {}"
                   .format(round(t, 6), self, received_packet))
 
+        ### Per-flow receive rate ###
+        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|RCVE|{}'.format(t, received_packet.size))
+
         #
         # OPERATIONS AGNOSTIC TO WHETHER WE'RE ESTABLISHED
         #

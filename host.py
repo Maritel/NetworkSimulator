@@ -24,8 +24,6 @@ class Host(object):
         else:
             p.flow.dst.on_reception(t, p)
 
-        ### Per-flow receive rate ###
-        self.em.log_it('FLOW|{}'.format(p.flow.i), 'T|{}|RCVE|{}'.format(t, p.size))
 
         ### Per-host receive rate ###
         self.em.log_it('HOST|{}'.format(self.i), 'T|{}|RCVE|{}'.format(t, p.size))
