@@ -162,10 +162,11 @@ if __name__ == '__main__':
 
     # Handle flow plotting
     flow_data = data['FLOW']
-    plt.figure()
     rows = len(flow_data)
-    cols = 3
+    cols = 4
     index = 1
+    print('rows', rows, 'cols', cols)
+    plt.figure(figsize=(4*cols, 3*rows)) # width, height
 
     for flow in flow_data:
         ### Per-flow send rate ###
@@ -184,7 +185,7 @@ if __name__ == '__main__':
             plt.ylabel('Send rate (bits/s)')
             plt.title('{}: Send rate vs. time'.format(flow))
 
-            print('Average send rate for link {}: {}'.format(link, sum(y)/len(y)))
+            print('Average send rate for flow {}: {}'.format(flow, sum(y)/len(y)))
 
 
         ### Per-flow receive rate ###
@@ -203,7 +204,26 @@ if __name__ == '__main__':
             plt.ylabel('Receive rate (bits/s)')
             plt.title('{}: Receive rate vs. time'.format(flow))
 
-            print('Average receive rate for link {}: {}'.format(link, sum(y)/len(y)))
+            print('Average receive rate for flow {}: {}'.format(flow, sum(y)/len(y)))
+
+
+        ### Per-flow window size ###
+        if 'WINDOW' in flow_data[flow]:
+            flow_window_data = flow_data[flow]['WINDOW']
+            x, y = [], []
+            total = 0
+            for time, size in flow_window_data:
+                x.append(float(time))
+                y.append(float(size))
+
+            plt.subplot(rows, cols, index)
+            index += 1
+            plt.plot(x, y)
+            plt.xlabel('Time (s)')
+            plt.ylabel('Window size (# pkts)')
+            plt.title('{}: Window size vs. time'.format(flow))
+
+            print('Average window size for flow {}: {}'.format(flow, sum(y)/len(y)))
 
 
         ### Per-flow round trip delay ###
@@ -225,5 +245,5 @@ if __name__ == '__main__':
             print('Average RTT for flow {}: {}'.format(flow, sum(y)/len(y)))
 
     plt.tight_layout()
-    plt.savefig(plotdir / "flows.png", dpi=200)
+    plt.savefig(plotdir / "flows.png")
 

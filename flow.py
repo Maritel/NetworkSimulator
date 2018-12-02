@@ -174,6 +174,7 @@ class FlowEnd(object):
 
         # ADJUST SETTINGS
         self.window_size = self.cc.ack_timeout()
+        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
         if not self.is_established():
             self.handshake_ack_wait *= 2
 
@@ -208,6 +209,7 @@ class FlowEnd(object):
                 if received_packet.size == CONTROL_PACKET_SIZE:
                     # Only non-data packets can be dupacks
                     retransmit, self.window_size = self.cc.dupack()
+                    self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
                     if retransmit:
                         # Clear all ack timeout events, because we're starting
                         # from the first unacknowledged packet anyway.
@@ -218,6 +220,7 @@ class FlowEnd(object):
             else:
                 self.send_first_unacked = received_packet.ack_number
                 self.window_size = self.cc.posack()
+                self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
 
             self.clear_redundant_timeouts(received_packet.ack_number)  # clean
 
