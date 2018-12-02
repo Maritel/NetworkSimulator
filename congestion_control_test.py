@@ -1,7 +1,7 @@
 from congestion_control import StopAndWait, Reno
-from events import EventManager, LinkSetUsable
+from events import EventManager
 from host import Host
-from link import Link
+from link import Link, LinkSetUsable
 from flow import Flow
 from packet import Packet, DATA_PACKET_SIZE, CONTROL_PACKET_SIZE
 

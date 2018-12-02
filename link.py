@@ -1,4 +1,4 @@
-from events import LinkBufferRelease, LinkExit
+from events import Event
 from collections import deque
 from packet import LinkStatePacket
 
@@ -83,3 +83,34 @@ class Link(object):
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
+
+
+class LinkBufferRelease(Event):
+    # When a packet is released from the link's buffer.
+    def __init__(self, t, link):
+        super().__init__(t)
+        self.link = link
+
+    def run(self):
+        self.link.on_buffer_release(self.t)
+
+
+class LinkExit(Event):
+    # When a packet reaches the end of a link.
+    def __init__(self, t, link, packet):
+        super().__init__(t)
+        self.link = link
+        self.packet = packet
+
+    def run(self):
+        self.link.on_packet_exit(self.t, self.packet)
+
+
+class LinkSetUsable(Event):
+    def __init__(self, t, link, usable):
+        super().__init__(t)
+        self.link = link
+        self.usable = usable
+    
+    def run(self):
+        self.link.set_usable(self.usable)

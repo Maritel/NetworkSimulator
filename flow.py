@@ -1,5 +1,5 @@
 from congestion_control import StopAndWait
-from events import AckTimeout, FlowEndAct
+from events import Event
 from packet import Packet, DATA_PACKET_SIZE, CONTROL_PACKET_SIZE
 from math import ceil
 
@@ -312,6 +312,25 @@ class FlowEnd(object):
 
     def __str__(self):
         return "{}/{}".format(self.i, self.host.i)
+
+
+class FlowEndAct(Event):
+    def __init__(self, t, flow_end):
+        super().__init__(t)
+        self.flow_end = flow_end  # flow which starts
+
+    def run(self):
+        self.flow_end.act(self.t)
+
+
+class AckTimeout(Event):
+    def __init__(self, t, flow_end, seq_number):
+        super().__init__(t)
+        self.flow_end = flow_end  # either FlowSrc or FlowDst
+        self.seq_number = seq_number
+    
+    def run(self):
+        self.flow_end.on_ack_timeout(self.t, self.seq_number)
 
 
 class Flow(object):

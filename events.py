@@ -1,9 +1,10 @@
+from abc import ABC, abstractmethod
 import queue
 import datetime
 import time
 from packet import LinkStatePacket
 
-class Event(object):
+class Event(ABC):
     def __init__(self, t):
         self.t = t
         self.valid = True
@@ -13,6 +14,11 @@ class Event(object):
 
     def invalidate(self):
         self.valid = False
+
+    @abstractmethod
+    def run(self):
+        """Do what the event is supposed to do"""
+        pass
 
     def __eq__(self, other_event):
         return self.t == other_event.t
@@ -33,50 +39,12 @@ class Event(object):
         return self.t <= other_event.t
 
 
-class FlowEndAct(Event):
-    def __init__(self, t, flow_end):
-        super().__init__(t)
-        self.flow_end = flow_end  # flow which starts
-
-
-class AckTimeout(Event):
-    def __init__(self, t, flow_end, seq_number):
-        super().__init__(t)
-        self.flow_end = flow_end  # either FlowSrc or FlowDst
-        self.seq_number = seq_number
-
-
-class LinkEntry(Event):
-    def __init__(self, t, link, packet):
-        super().__init__(t)
-        self.link = link
-        self.packet = packet
-
-
-class LinkBufferRelease(Event):
-    # When a packet is released from the link's buffer.
-    def __init__(self, t, link):
-        super().__init__(t)
-        self.link = link
-
-
-class LinkExit(Event):
-    # When a packet reaches the end of a link.
-    def __init__(self, t, link, packet):
-        super().__init__(t)
-        self.link = link
-        self.packet = packet
-
-
-class LinkSetUsable(Event):
-    def __init__(self, t, link, usable):
-        super().__init__(t)
-        self.link = link
-        self.usable = usable
-
 class SendLinkState(Event):
     def __init__(self, t):
         super().__init__(t)
+    
+    def run(self):
+        pass
 
 class EventManager(object):
     def __init__(self, logging=True, max_time=300):
@@ -96,6 +64,7 @@ class EventManager(object):
             print([x.i for x in self.router_list[router].links])
 
         self.enqueue(SendLinkState(0.0))
+        # Trick: if linkstate is the only event, do nothing
             
         oldtime = self.current_time
         while not self.event_queue.empty() and self.current_time <= self.max_time:
@@ -112,18 +81,7 @@ class EventManager(object):
                     for link in self.router_list[router].links:
                         link.on_packet_entry(self.current_time, p)
             elif ev.is_valid():
-                if type(ev) is FlowEndAct:
-                    ev.flow_end.act(ev.t)
-                elif type(ev) is AckTimeout:
-                    ev.flow_end.on_ack_timeout(ev.t, ev.seq_number)
-                elif type(ev) is LinkBufferRelease:
-                    ev.link.on_buffer_release(ev.t)
-                elif type(ev) is LinkExit:
-                    ev.link.on_packet_exit(ev.t, ev.packet)
-                elif type(ev) is LinkSetUsable:
-                    ev.link.set_usable(ev.usable)
-                else:
-                    pass
+                ev.run()
 
     def initialize_log(self):
         if self.logging:
