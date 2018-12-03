@@ -47,10 +47,9 @@ class SendLinkState(Event):
         pass
 
 class EventManager(object):
-    def __init__(self, logging=True, max_time=300):
+    def __init__(self, logging=True):
         self.event_queue = queue.PriorityQueue()
         self.current_time = 0
-        self.max_time = max_time
         self.logging = logging
         self.initialize_log()
         self.router_list = {}
@@ -67,19 +66,25 @@ class EventManager(object):
         self.flowends.remove(flowend)
         print('Flowend removed:', flowend, 'Set:', list(str(x) for x in self.flowends))
 
-    def run(self, stop_when_flows_done=True, interval=5):
+    def run(self, stop_when_flows_done=True, max_time=None, interval=5):
         """
+        Run network simulation.
+
+        stop_when_flows_done and max_time control stopping conditions.
         We always stop when there are no more events.
         stop_when_flows_done: if True, we also stop when all flows are done.
-        interval: interval at which routers resend link state
+        max_time: if not None, stop after that many seconds.
         """
         print(self.router_list)
         for router in self.router_list:
             print([x.i for x in self.router_list[router].links])
 
-        self.enqueue(SendLinkState(0.0))
+        if self.router_list:  # Only send link state if there are routers
+            self.enqueue(SendLinkState(0.0))
 
-        while not self.event_queue.empty() and (not(stop_when_flows_done) or self.flowends) and self.current_time <= self.max_time:
+        while not self.event_queue.empty() \
+                and (not(stop_when_flows_done) or self.flowends) \
+                and (max_time is None or self.current_time <= max_time):
             ev = self.event_queue.get()
             self.current_time = ev.t
             if type(ev) is SendLinkState:
