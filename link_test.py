@@ -31,5 +31,5 @@ l.on_packet_entry(0, Packet('P4', f, h1, h2, False, False, False, 4, 0, DATA_PAC
 l.on_packet_entry(0, Packet('P5', f, h1, h2, False, False, False, 5, 0, DATA_PACKET_SIZE))
 # print(l.buffer)
 # print(h2.packets, h2.times)
-em.run()
+em.run(stop_when_flows_done=False)
 assert h2.times == [11, 12, 13, 14, 15]

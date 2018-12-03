@@ -67,15 +67,19 @@ class EventManager(object):
         self.flowends.remove(flowend)
         print('Flowend removed:', flowend, 'Set:', list(str(x) for x in self.flowends))
 
-    def run(self, interval=5):
+    def run(self, stop_when_flows_done=True, interval=5):
+        """
+        We always stop when there are no more events.
+        stop_when_flows_done: if True, we also stop when all flows are done.
+        interval: interval at which routers resend link state
+        """
         print(self.router_list)
         for router in self.router_list:
             print([x.i for x in self.router_list[router].links])
 
         self.enqueue(SendLinkState(0.0))
-        # Trick: if linkstate is the only event, do nothing
-            
-        while not self.event_queue.empty() and self.flowends and self.current_time <= self.max_time:
+
+        while not self.event_queue.empty() and (not(stop_when_flows_done) or self.flowends) and self.current_time <= self.max_time:
             ev = self.event_queue.get()
             self.current_time = ev.t
             if type(ev) is SendLinkState:
