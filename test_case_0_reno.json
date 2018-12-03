@@ -1,0 +1,30 @@
+{
+    "hosts": [
+        {
+            "id": "H1"
+        },
+        {
+            "id": "H2"
+        }
+    ],
+    "links": [
+        {
+            "id": "L1",
+            "end_a": "H1",
+            "end_b": "H2",
+            "rate": 1.049e7,
+            "delay": 10e-3,
+            "buffer_size": 5.24e5
+        }
+    ],
+    "flows": [
+        {
+            "id": "F1",
+            "source": "H1",
+            "destination": "H2",
+            "amount": 1.678e8,
+            "start_delay": 1.0,
+            "congestion_control": "Reno"
+        }
+    ]
+}
