@@ -8,7 +8,7 @@ import sys
 # sub TODO: Make sure that host send/receive rates and link flow rates don't need to be computed with some window size?
 # TODO: Refactor code to be more modular and allow for plotting of specific statistics.
 
-def calc_rate(amounts, nsamples=1000):
+def calc_rate(amounts, nsamples=100):
     """
     Calculate rates as amount/sec. amounts is a list of (time, amount) pairs.
     Return x, y, avg.
