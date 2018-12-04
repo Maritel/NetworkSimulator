@@ -8,7 +8,7 @@ import sys
 # sub TODO: Make sure that host send/receive rates and link flow rates don't need to be computed with some window size?
 # TODO: Refactor code to be more modular and allow for plotting of specific statistics.
 
-def calc_rate(amounts, nsamples=100):
+def calc_rate(amounts, nsamples=1000):
     """
     Calculate rates as amount/sec. amounts is a list of (time, amount) pairs.
     Return x, y, avg.
@@ -35,6 +35,9 @@ def calc_rate(amounts, nsamples=100):
         total += amount
     
     return x, y, sum(y) / nsamples
+
+SUBPLOT_HEIGHT = 4
+SUBPLOT_WIDTH = 8
 
 if __name__ == '__main__':
     if(len(sys.argv) == 1):
@@ -68,10 +71,10 @@ if __name__ == '__main__':
 
     # Handle host plotting
     host_data = data['HOST']
-    plt.figure()
     rows = len(host_data)
     cols = 2
     index = 1
+    plt.figure(figsize=(SUBPLOT_WIDTH*cols, SUBPLOT_HEIGHT*rows)) # width, height
 
     for host in host_data:
         host_send_data = host_data[host]['SEND']
@@ -168,8 +171,7 @@ if __name__ == '__main__':
     rows = len(flow_data)
     cols = 4
     index = 1
-    print('rows', rows, 'cols', cols)
-    plt.figure(figsize=(4*cols, 3*rows)) # width, height
+    plt.figure(figsize=(SUBPLOT_WIDTH*cols, SUBPLOT_HEIGHT*rows)) # width, height
 
     for flow in flow_data:
         ### Per-flow send rate ###
