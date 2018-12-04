@@ -8,6 +8,34 @@ import sys
 # sub TODO: Make sure that host send/receive rates and link flow rates don't need to be computed with some window size?
 # TODO: Refactor code to be more modular and allow for plotting of specific statistics.
 
+def calc_rate(amounts, nsamples=100):
+    """
+    Calculate rates as amount/sec. amounts is a list of (time, amount) pairs.
+    Return x, y, avg.
+    - y[i] is the rate at time x[i]
+    - avg is the global average rate
+    """
+    if not amounts:
+        return [], [], 0
+
+    max_time = amounts[-1][0]
+    delta = max_time / nsamples
+
+    i = 0  # Current sample index
+    total = 0
+    x = []
+    y = []
+    for time, amount in amounts:
+        if time > i * delta:
+            # Compute rate and shift to new sample
+            x.append(i*delta)
+            y.append(total/delta)
+            total = 0
+            i += 1
+        total += amount
+    
+    return x, y, sum(y) / nsamples
+
 if __name__ == '__main__':
     if(len(sys.argv) == 1):
         file_names = [f for f in os.listdir('.') if os.path.isfile(f) and 'log' in f]
@@ -36,7 +64,7 @@ if __name__ == '__main__':
                 if part[4] not in data[part[0]][part[1]]:
                     data[part[0]][part[1]][part[4]] = []
                 # Record time step for appropriate and specific component
-                data[part[0]][part[1]][part[4]].append((part[3], part[5]))
+                data[part[0]][part[1]][part[4]].append((float(part[3]), float(part[5])))
 
     # Handle host plotting
     host_data = data['HOST']
@@ -50,35 +78,24 @@ if __name__ == '__main__':
         host_rcve_data = host_data[host]['RCVE']
 
         ### Per-host send rate ###
-        x, y = [], []
-        for time, size in host_send_data:
-            x.append(float(time))
-            y.append(float(size))
-
         plt.subplot(rows, cols, index)
         index += 1
+        x, y, avg = calc_rate(host_send_data)
         plt.plot(x, y)
         plt.xlabel('Time (s)')
         plt.ylabel('Send rate (bits/s)')
         plt.title('{}: Send rate vs. time'.format(host))
-
-        print('Average send rate for host {}: {}'.format(host, sum(y)/x[-1]))
+        print('Average send rate for host {}: {} bits/s'.format(host, avg))
 
         ### Per-host receive rate ###
-        x, y = [], []
-        total = 0
-        for time, size in host_rcve_data:
-            x.append(float(time))
-            y.append(float(size))
-
         plt.subplot(rows, cols, index)
         index += 1
+        x, y, avg = calc_rate(host_rcve_data)
         plt.plot(x, y)
         plt.xlabel('Time (s)')
         plt.ylabel('Receive rate (bits/s)')
         plt.title('{}: Receive rate vs. time'.format(host))
-
-        print('Average receive rate for host {}: {}'.format(host, sum(y)/len(y)))
+        print('Average receive rate for host {}: {} bits/s'.format(host, avg))
 
     plt.tight_layout()
     plt.savefig(plotdir / "hosts.png", dpi=200)
@@ -98,7 +115,6 @@ if __name__ == '__main__':
         else:
             link_loss_data = []
         link_flow_data = link_data[link]['FLOW']
-        
 
         ### Per-link buffer occupancy ###
         x, y = [], []
@@ -106,8 +122,8 @@ if __name__ == '__main__':
         for time, size in link_buff_data:
             x.append(float(time))
             total += float(size)
-            if(total > 8192):
-                print("exceed buffer limit at {} with buffer size {}".format(float(time), total))
+            # if(total > 8192):
+            #     print("exceed buffer limit at {} with buffer size {}".format(float(time), total))
             y.append(float(total))
 
         plt.figure()
@@ -119,43 +135,30 @@ if __name__ == '__main__':
         plt.title('{}: Link buffer vs. time'.format(link))
         plt.savefig(plotdir / "link_{}_buffer.png".format(link), dpi=200)
 
-        print('Average buffer occupancy for link {}: {}'.format(link, sum(y)/len(y)))
+        print('Average buffer occupancy for link {}: {} bits'.format(link, sum(y)/len(y)))
 
         ### Per-link packet loss ###
-        x, y = [], []
-        total = 0
-        for time, pkt in link_loss_data:
-            x.append(float(time))
-            y.append(int(pkt))
-
         plt.figure()
         index += 1
+        x, y, avg = calc_rate(link_loss_data)
         plt.plot(x, y)
         plt.xlabel('Time (s)')
-        plt.ylabel('Packet loss (#pkts)')
+        plt.ylabel('Loss rate (#pkts/s)')
         plt.title('{}: Lost packets vs. time'.format(link))
         plt.savefig(plotdir / "link_{}_pkt_loss.png".format(link), dpi=200)
-
-        if y:
-            print('Average lost packets for link {}: {}'.format(link, y[-1]/len(y)))
+        print('Average loss rate for link {}: {} pkts/s'.format(link, avg))
 
         ### Per-link flow rate ###
-        x, y = [], []
-        total = 0
-        for time, size in link_flow_data:
-            x.append(float(time))
-            y.append(float(size))
-
         # plt.subplot(rows, cols, index)
         plt.figure()
+        x, y, avg = calc_rate(link_flow_data)
         # index += 1
         plt.plot(x, y)
         plt.xlabel('Time (s)')
         plt.ylabel('Link flow rate (b/s)')
         plt.title('{}: Link flow rate vs. time'.format(link))
         plt.savefig(plotdir / "link_{}_flow_rate.png".format(link), dpi=200)
-
-        print('Average flow rate for link {}: {}'.format(link, sum(y)/len(y)))
+        print('Average flow rate for link {}: {} bits/s'.format(link, avg))
 
     # plt.tight_layout()
     # plt.savefig(str(ctr) + ".png", dpi=200); ctr += 1
@@ -172,39 +175,27 @@ if __name__ == '__main__':
         ### Per-flow send rate ###
         if 'SEND' in flow_data[flow]:
             flow_send_data = flow_data[flow]['SEND']
-            x, y = [], []
-            total = 0
-            for time, size in flow_send_data:
-                x.append(float(time))
-                y.append(float(size))
-
             plt.subplot(rows, cols, index)
             index += 1
+            x, y, avg = calc_rate(flow_send_data)
             plt.plot(x, y)
             plt.xlabel('Time (s)')
             plt.ylabel('Send rate (bits/s)')
             plt.title('{}: Send rate vs. time'.format(flow))
-
-            print('Average send rate for flow {}: {}'.format(flow, sum(y)/len(y)))
+            print('Average send rate for flow {}: {} bits/s'.format(flow, avg))
 
 
         ### Per-flow receive rate ###
         if 'RCVE' in flow_data[flow]:
             flow_rcve_data = flow_data[flow]['RCVE']
-            x, y = [], []
-            total = 0
-            for time, size in flow_rcve_data:
-                x.append(float(time))
-                y.append(float(size))
-
             plt.subplot(rows, cols, index)
             index += 1
+            x, y, avg = calc_rate(flow_rcve_data)
             plt.plot(x, y)
             plt.xlabel('Time (s)')
             plt.ylabel('Receive rate (bits/s)')
             plt.title('{}: Receive rate vs. time'.format(flow))
-
-            print('Average receive rate for flow {}: {}'.format(flow, sum(y)/len(y)))
+            print('Average receive rate for flow {}: {} bits/s'.format(flow, sum(y)/len(y)))
 
 
         ### Per-flow window size ###
@@ -222,8 +213,7 @@ if __name__ == '__main__':
             plt.xlabel('Time (s)')
             plt.ylabel('Window size (# pkts)')
             plt.title('{}: Window size vs. time'.format(flow))
-
-            print('Average window size for flow {}: {}'.format(flow, sum(y)/len(y)))
+            print('Average window size for flow {}: {} pkts'.format(flow, sum(y)/len(y)))
 
 
         ### Per-flow round trip delay ###
@@ -242,7 +232,7 @@ if __name__ == '__main__':
             plt.ylabel('RTT (s)')
             plt.title('{}: RTT vs. time'.format(flow))
 
-            print('Average RTT for flow {}: {}'.format(flow, sum(y)/len(y)))
+            print('Average RTT for flow {}: {}s'.format(flow, sum(y)/len(y)))
 
     plt.tight_layout()
     plt.savefig(plotdir / "flows.png")
