@@ -5,7 +5,7 @@ from link import Link
 from flow import Flow
 
 em = EventManager()
-hosts, routers, links, flows = read_network('test_case_0.json', em)
+hosts, routers, links, flows = read_network('test_case_0_stopandwait.json', em)
 h1 = Host(em, 'H1', debug=False)
 h1.add_link(links['L1_a'])
 h2 = Host(em, 'H2', debug=False)
