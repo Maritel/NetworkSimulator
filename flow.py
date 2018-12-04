@@ -61,10 +61,12 @@ class FlowEnd(object):
         #
         # OPERATION PARAMETERS
         #
-        self.handshake_ack_wait = 0.1
-        self.window_size = cc.initial_cwnd()
-        self.data_ack_wait = 0.1
+        # Minimum ACK timeout permitted by RFCs is 1.0s.
+        # "Whenever RTO is computed, if it is less than 1 second, then the
+        # RTO SHOULD be rounded up to 1 second"
         # TODO: Compute timeouts using algorithm from book.
+        self.ack_wait = 1
+        self.window_size = cc.initial_cwnd()
 
     def is_established(self):
         return self.send_first_unacked > self.send_iss
@@ -144,8 +146,6 @@ class FlowEnd(object):
         # ADJUST SETTINGS
         self.window_size = self.cc.ack_timeout()
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
-        if not self.is_established():
-            self.handshake_ack_wait *= 2
 
         # Clear all ack timeout events, because we're starting from the first
         # unacknowledged packet anyway.
@@ -279,8 +279,7 @@ class FlowEnd(object):
             assert False
 
         # Schedule an AckTimeout
-        ack_timeout_event = \
-            AckTimeout(t + self.data_ack_wait, self, self.send_next)
+        ack_timeout_event = AckTimeout(t + self.ack_wait, self, self.send_next)
         self.ack_timeout_events[self.send_next] = ack_timeout_event
         self.em.enqueue(ack_timeout_event)
 
