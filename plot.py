@@ -106,6 +106,7 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     plt.savefig(plotdir + "hosts.png", dpi=200)
+    plt.close('all')
 
 
     # Handle link plotting
@@ -141,6 +142,7 @@ if __name__ == '__main__':
         plt.ylabel('Link buffer (b)')
         plt.title('{}: Link buffer vs. time'.format(link))
         plt.savefig(plotdir + "link_{}_buffer.png".format(link), dpi=200)
+        plt.close('all')
 
         print('Average buffer occupancy for link {}: {} bits'.format(link, sum(y)/len(y)))
 
@@ -153,6 +155,7 @@ if __name__ == '__main__':
         plt.ylabel('Loss rate (#pkts/s)')
         plt.title('{}: Lost packets vs. time'.format(link))
         plt.savefig(plotdir + "link_{}_pkt_loss.png".format(link), dpi=200)
+        plt.close('all')
         print('Average loss rate for link {}: {} pkts/s'.format(link, avg))
 
         ### Per-link flow rate ###
@@ -165,6 +168,7 @@ if __name__ == '__main__':
         plt.ylabel('Link flow rate (b/s)')
         plt.title('{}: Link flow rate vs. time'.format(link))
         plt.savefig(plotdir + "link_{}_flow_rate.png".format(link), dpi=200)
+        plt.close('all')
         print('Average flow rate for link {}: {} bits/s'.format(link, avg))
 
     # plt.tight_layout()
@@ -242,4 +246,5 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     plt.savefig(plotdir + "flows.png")
+    plt.close('all')
 
