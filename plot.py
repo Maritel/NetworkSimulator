@@ -209,7 +209,7 @@ if __name__ == '__main__':
             plt.xlabel('Time (s)')
             plt.ylabel('Receive rate (bits/s)')
             plt.title('{}: Receive rate vs. time'.format(flow))
-            print('Average receive rate for flow {}: {} bits/s'.format(flow, sum(y)/len(y)))
+            print('Average receive rate for flow {}: {} bits/s'.format(flow, avg))
 
 
         ### Per-flow window size ###
