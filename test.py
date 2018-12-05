@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 
 if __name__ == '__main__':
     em = EventManager()
-    read_network('test_case_1.json', em)
+    read_network('test_case_1_reno.json', em)
 
     em.run()
 

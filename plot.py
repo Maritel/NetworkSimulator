@@ -78,6 +78,7 @@ if __name__ == '__main__':
     rows = len(host_data)
     cols = 2
     index = 1
+    plt.close()
     plt.figure(figsize=(SUBPLOT_WIDTH*cols, SUBPLOT_HEIGHT*rows)) # width, height
 
     for host in host_data:
@@ -133,8 +134,8 @@ if __name__ == '__main__':
             # if(total > 8192):
             #     print("exceed buffer limit at {} with buffer size {}".format(float(time), total))
             y.append(float(total))
-
-        plt.figure()
+        plt.close()
+        plt.figure(figsize=(10, 4))
         # plt.subplot(rows, cols, index)
         index += 1
         plt.plot(x, y)
@@ -147,7 +148,8 @@ if __name__ == '__main__':
         print('Average buffer occupancy for link {}: {} bits'.format(link, sum(y)/len(y)))
 
         ### Per-link packet loss ###
-        plt.figure()
+        plt.close()
+        plt.figure(figsize=(10, 4))
         index += 1
         x, y, avg = calc_rate(link_loss_data)
         plt.plot(x, y)
@@ -160,7 +162,8 @@ if __name__ == '__main__':
 
         ### Per-link flow rate ###
         # plt.subplot(rows, cols, index)
-        plt.figure()
+        plt.close()
+        plt.figure(figsize=(10, 4))
         x, y, avg = calc_rate(link_flow_data)
         # index += 1
         plt.plot(x, y)
@@ -179,6 +182,7 @@ if __name__ == '__main__':
     rows = len(flow_data)
     cols = 4
     index = 1
+    plt.close()
     plt.figure(figsize=(SUBPLOT_WIDTH*cols, SUBPLOT_HEIGHT*rows)) # width, height
 
     for flow in flow_data:
