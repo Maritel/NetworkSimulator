@@ -33,16 +33,18 @@ def calc_rate(amounts, nsamples=100):
             total = 0
             i += 1
         total += amount
-    
+
     return x, y, sum(y) / nsamples
+
 
 SUBPLOT_HEIGHT = 4
 SUBPLOT_WIDTH = 8
 
+
 if __name__ == '__main__':
     if(len(sys.argv) == 1):
         file_names = [f for f in os.listdir('.') if os.path.isfile(f) and 'log' in f]
-        
+
         # Get most recent file name
         file_name = ''
         for fn in file_names:
@@ -51,8 +53,10 @@ if __name__ == '__main__':
     else:
         file_name = Path(sys.argv[1])
 
-    plotdir = Path(os.path.splitext(file_name)[0] + '_plots')
-    plotdir.mkdir(exist_ok=True)
+    # plotdir = Path(os.path.splitext(file_name)[0] + '_plots')
+    plotdir = os.path.splitext(file_name)[0] + '_plots/'
+    # plotdir.mkdir(exist_ok=True)
+    os.makedirs(plotdir, exist_ok=True)
 
 
     data = {}
@@ -101,8 +105,8 @@ if __name__ == '__main__':
         print('Average receive rate for host {}: {} bits/s'.format(host, avg))
 
     plt.tight_layout()
-    plt.savefig(plotdir / "hosts.png", dpi=200)
-    
+    plt.savefig(plotdir + "hosts.png", dpi=200)
+
 
     # Handle link plotting
     link_data = data['LINK']
@@ -136,7 +140,7 @@ if __name__ == '__main__':
         plt.xlabel('Time (s)')
         plt.ylabel('Link buffer (b)')
         plt.title('{}: Link buffer vs. time'.format(link))
-        plt.savefig(plotdir / "link_{}_buffer.png".format(link), dpi=200)
+        plt.savefig(plotdir + "link_{}_buffer.png".format(link), dpi=200)
 
         print('Average buffer occupancy for link {}: {} bits'.format(link, sum(y)/len(y)))
 
@@ -148,7 +152,7 @@ if __name__ == '__main__':
         plt.xlabel('Time (s)')
         plt.ylabel('Loss rate (#pkts/s)')
         plt.title('{}: Lost packets vs. time'.format(link))
-        plt.savefig(plotdir / "link_{}_pkt_loss.png".format(link), dpi=200)
+        plt.savefig(plotdir + "link_{}_pkt_loss.png".format(link), dpi=200)
         print('Average loss rate for link {}: {} pkts/s'.format(link, avg))
 
         ### Per-link flow rate ###
@@ -160,7 +164,7 @@ if __name__ == '__main__':
         plt.xlabel('Time (s)')
         plt.ylabel('Link flow rate (b/s)')
         plt.title('{}: Link flow rate vs. time'.format(link))
-        plt.savefig(plotdir / "link_{}_flow_rate.png".format(link), dpi=200)
+        plt.savefig(plotdir + "link_{}_flow_rate.png".format(link), dpi=200)
         print('Average flow rate for link {}: {} bits/s'.format(link, avg))
 
     # plt.tight_layout()
@@ -237,5 +241,5 @@ if __name__ == '__main__':
             print('Average RTT for flow {}: {}s'.format(flow, sum(y)/len(y)))
 
     plt.tight_layout()
-    plt.savefig(plotdir / "flows.png")
+    plt.savefig(plotdir + "flows.png")
 
