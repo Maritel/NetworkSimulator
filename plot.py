@@ -1,40 +1,13 @@
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
+from plot_util import calc_rate
 import sys
 
 # TODO: Verify correctness by matching to time traces for Test Case 1
 # sub TODO: Make sure that flow send/receive rates are computed correctly. Figure out flow ends vs. flow???
 # sub TODO: Make sure that host send/receive rates and link flow rates don't need to be computed with some window size?
 # TODO: Refactor code to be more modular and allow for plotting of specific statistics.
-
-def calc_rate(amounts, nsamples=100):
-    """
-    Calculate rates as amount/sec. amounts is a list of (time, amount) pairs.
-    Return x, y, avg.
-    - y[i] is the rate at time x[i]
-    - avg is the global average rate
-    """
-    if not amounts:
-        return [], [], 0
-
-    max_time = amounts[-1][0]
-    delta = max_time / nsamples
-
-    i = 0  # Current sample index
-    total = 0
-    x = []
-    y = []
-    for time, amount in amounts:
-        if time > i * delta:
-            # Compute rate and shift to new sample
-            x.append(i*delta)
-            y.append(total/delta)
-            total = 0
-            i += 1
-        total += amount
-
-    return x, y, sum(y) / nsamples
 
 
 SUBPLOT_HEIGHT = 4
@@ -43,7 +16,7 @@ SUBPLOT_WIDTH = 8
 
 if __name__ == '__main__':
     if(len(sys.argv) == 1):
-        file_names = [f for f in os.listdir('.') if os.path.isfile(f) and 'log' in f]
+        file_names = [f for f in os.listdir('.') if os.path.isfile(f) and f.startswith('log_') and f.endswith('.txt')]
 
         # Get most recent file name
         file_name = ''
@@ -131,14 +104,12 @@ if __name__ == '__main__':
         for time, size in link_buff_data:
             x.append(float(time))
             total += float(size)
-            # if(total > 8192):
-            #     print("exceed buffer limit at {} with buffer size {}".format(float(time), total))
             y.append(float(total))
         plt.close()
         plt.figure(figsize=(10, 4))
         # plt.subplot(rows, cols, index)
         index += 1
-        plt.plot(x, y)
+        plt.step(x, y, where='post')
         plt.xlabel('Time (s)')
         plt.ylabel('Link buffer (b)')
         plt.title('{}: Link buffer vs. time'.format(link))
@@ -223,7 +194,7 @@ if __name__ == '__main__':
 
             plt.subplot(rows, cols, index)
             index += 1
-            plt.plot(x, y)
+            plt.step(x, y, where='post')
             plt.xlabel('Time (s)')
             plt.ylabel('Window size (# pkts)')
             plt.title('{}: Window size vs. time'.format(flow))
