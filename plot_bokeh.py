@@ -1,5 +1,6 @@
 from bokeh.layouts import column
 from bokeh.plotting import figure, gridplot, output_file, save
+from bokeh.models import Span
 import os
 from pathlib import Path
 from plot_util import calc_rate, calc_totals
@@ -116,17 +117,34 @@ def main():
         flow_rcve_data = flow_data[flow].get('RCVE', [])
         x, y, avg = calc_rate(flow_rcve_data)
         f.line(x, y, color='red', legend='Receive')
+        flow_tput_data = flow_data[flow].get('THROUGHPUT', [])
+        x, y, avg = calc_rate(flow_tput_data)
+        f.line(x, y, color='green', legend='Throughput')
         flow_figs.append(f)
 
         ### Per-flow window size ###
-        flow_window_data = flow_data[flow]['WINDOW']
         f = figure(
-            title='{}: Window size'.format(flow),
+            title='{}: Window size (vertical dashes are ack timeouts)'.format(flow),
             x_axis_label='Time (s)',
             y_axis_label='Window size (#pkts)'
         )
+        flow_window_data = flow_data[flow]['WINDOW']
         x, y = zip(*flow_window_data)
-        f.step(x, y, mode='after')
+        f.step(x, y, color='blue', mode='after', legend='Window')
+        flow_ack_timeout_data = flow_data[flow].get('ACKTIMEOUT', [])
+        for t, _ in flow_ack_timeout_data:
+            f.add_layout(Span(location=t, dimension='height', line_color='black', line_dash='dashed'))
+        flow_figs.append(f)
+
+        f = figure(
+            title='{}: Ack rates'.format(flow),
+            x_axis_label='Time (s)',
+            y_axis_label='Ack rates (#/s)'
+        )
+        x, y, avg = calc_rate(flow_data[flow].get('POSACK', []))
+        f.line(x, y, color='green', legend='Posacks')
+        x, y, avg = calc_rate(flow_data[flow].get('DUPACK', []))
+        f.line(x, y, color='red', legend='Dupacks')
         flow_figs.append(f)
 
         ### Per-flow round trip delay ###

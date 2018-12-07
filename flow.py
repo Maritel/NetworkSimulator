@@ -143,6 +143,9 @@ class FlowEnd(object):
         assert self.send_first_unacked <= seq_number
         self.send_next = self.send_first_unacked
 
+        # Ack timeout
+        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|ACKTIMEOUT|1'.format(t))
+
         # ADJUST SETTINGS
         self.window_size = self.cc.ack_timeout()
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
@@ -182,6 +185,7 @@ class FlowEnd(object):
                     # Only non-data packets can be dupacks
                     retransmit, self.window_size = self.cc.dupack()
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
+                    self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|DUPACK|1'.format(t))
                     if retransmit:
                         # Clear all ack timeout events, because we're starting
                         # from the first unacknowledged packet anyway.
@@ -190,9 +194,12 @@ class FlowEnd(object):
                         self.ack_timeout_events.clear()
                         self.send_next = self.send_first_unacked
             else:
+                self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|THROUGHPUT|{}'.format(
+                    t, (received_packet.ack_number - self.send_first_unacked) * DATA_PACKET_SIZE))
                 self.send_first_unacked = received_packet.ack_number
                 self.window_size = self.cc.posack()
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
+                self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|POSACK|1'.format(t))
                 if self.send_first_unacked > self.last_seq_number:
                     # All packets are acked, so this flow is done
                     self.em.flowend_done(self)
