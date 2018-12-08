@@ -179,7 +179,20 @@ class FlowEnd(object):
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|DUPACK|1'.format(t))
                     if retransmit:
-                        self.retransmit(t)
+                        old_next = self.send_next
+                        old_window_size = self.window_size
+                        # Retransmit the lost packet (which is the first unacked packet)
+                        # Subtle: invalidate its old ack timeout
+                        self.send_next = self.send_first_unacked
+                        self.window_size = 1
+                        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
+                        self.ack_timeout_events[self.send_first_unacked].invalidate()
+                        self.act(t)
+                        # Restore previous state
+                        self.send_next = old_next
+                        self.window_size = old_window_size
+                        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
+                        self.act(t)
             else:
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|THROUGHPUT|{}'.format(
                     t, (received_packet.ack_number - self.send_first_unacked) * DATA_PACKET_SIZE))
