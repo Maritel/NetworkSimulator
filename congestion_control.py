@@ -49,7 +49,6 @@ class Reno(CongestionControl):
     def __init__(self, debug=True):
         self.cwnd = 1
         self.ssthresh = float('inf')
-        self.ca_n_posacks = 0       # In CA, num posacks in a row
         self.n_dupacks = 0          # Number of dupacks in a row
         self.fast_recovery = False  # Whether we're in fast recovery mode
     
@@ -59,41 +58,39 @@ class Reno(CongestionControl):
     def posack(self):
         self.n_dupacks = 0
 
-        if self.fast_recovery: # Exit FR/FR and deflate window
-            self.fast_recovery = False
-            self.cwnd = self.ssthresh
-        
         if self.cwnd < self.ssthresh: # Slow start
+            assert not self.fast_recovery
             self.cwnd += 1
-        else: # Congestion avoidance
-            self.ca_n_posacks += 1
-            if self.ca_n_posacks == self.cwnd:
-                self.cwnd += 1
-                self.ca_n_posacks = 0
+        else:
+            if self.fast_recovery: # Exit FR/FR and deflate window
+                self.fast_recovery = False
+                self.cwnd = self.ssthresh
+            
+            # Congestion avoidance
+            self.cwnd += 1/self.cwnd
         
-        return self.cwnd
+        return int(self.cwnd)
     
     def dupack(self):
-        self.n_dupacks += 1
-
-        if not(self.fast_recovery) and self.n_dupacks == 3: # Enter FR/FR
-            self.ca_n_posacks = 0
-            self.fast_recovery = True
-            self.ssthresh = max(self.cwnd // 2, 2)
-            self.cwnd = self.ssthresh + 3
-            return True, self.cwnd
-        
-        if self.fast_recovery:
-            # For each additional dupack, inflate window
-            self.cwnd += 1
-        
+        # If slow start, do nothing
+        if self.cwnd >= self.ssthresh:
+            if self.fast_recovery:  # FR/FR
+                # For each additional dupack, inflate window
+                self.cwnd += 1
+            else:  # CA
+                self.n_dupacks += 1
+                if self.n_dupacks == 3: # Enter FR/FR
+                    self.fast_recovery = True
+                    self.ssthresh = max(self.cwnd // 2, 2)
+                    self.cwnd = self.ssthresh + 3
+                    return True, self.cwnd        
         return False, self.cwnd
     
     def ack_timeout(self):
-        self.ca_n_posacks = 0
+        # If in FR/FR, always exit
+        # Same behavior for SS and CA
         self.n_dupacks = 0
         self.fast_recovery = False
-
         self.ssthresh = max(self.cwnd // 2, 2)
         self.cwnd = 1
         return self.cwnd
