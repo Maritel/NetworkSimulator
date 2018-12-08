@@ -141,7 +141,6 @@ class FlowEnd(object):
         # We want to retransmit the first unacknowledged packet. Usually, this
         # should be the packet with #seq_number.
         assert self.send_first_unacked <= seq_number
-        self.send_next = self.send_first_unacked
 
         # Ack timeout
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|ACKTIMEOUT|1'.format(t))
@@ -150,14 +149,7 @@ class FlowEnd(object):
         self.window_size = self.cc.ack_timeout()
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
 
-        # Clear all ack timeout events, because we're starting from the first
-        # unacknowledged packet anyway.
-        for _, event in self.ack_timeout_events.items():
-            event.invalidate()
-        self.ack_timeout_events.clear()
-
-        self.act(t)
-        pass
+        self.retransmit(t)
 
     def on_reception(self, t, received_packet):
         assert received_packet.receiver == self.host
@@ -187,12 +179,7 @@ class FlowEnd(object):
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|DUPACK|1'.format(t))
                     if retransmit:
-                        # Clear all ack timeout events, because we're starting
-                        # from the first unacknowledged packet anyway.
-                        for _, event in self.ack_timeout_events.items():
-                            event.invalidate()
-                        self.ack_timeout_events.clear()
-                        self.send_next = self.send_first_unacked
+                        self.retransmit(t)
             else:
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|THROUGHPUT|{}'.format(
                     t, (received_packet.ack_number - self.send_first_unacked) * DATA_PACKET_SIZE))
@@ -278,6 +265,20 @@ class FlowEnd(object):
                           .format(round(t, 6), self, response_packet))
 
             self.act(t)  # May want to send data here.
+
+    def retransmit(self, t):
+        """Assuming the window size has been set correctly, retransmit from the
+        first unacknowledged packet."""
+        self.send_next = self.send_first_unacked
+        
+        # Clear all ack timeout events, because we're starting from the first
+        # unacknowledged packet anyway.
+        for _, event in self.ack_timeout_events.items():
+            event.invalidate()
+        self.ack_timeout_events.clear()
+
+        self.act(t)
+
 
     def send_acknowledgeable_packet(self, t, p):
         """Send an acknowledgeable packet. Update state such as send_next."""
