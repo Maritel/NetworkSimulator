@@ -61,7 +61,8 @@ def read_network(filename, event_manager, debug=False):
         if json_flow['congestion_control'] == 'StopAndWait':
             cc = StopAndWait()
         elif json_flow['congestion_control'] == 'Reno':
-            cc = Reno()
+            # Note: We only use Reno on the source
+            cc = Reno(event_manager, json_flow['id'] + 'SRC')
         else:
             raise ValueError('Unknown congestion control algorithm '
                              + json_flow['congestion_control'])

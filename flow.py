@@ -146,7 +146,7 @@ class FlowEnd(object):
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|ACKTIMEOUT|1'.format(t))
 
         # ADJUST SETTINGS
-        self.window_size = self.cc.ack_timeout()
+        self.window_size = self.cc.ack_timeout(t)
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
 
         self.retransmit(t)
@@ -175,7 +175,7 @@ class FlowEnd(object):
             elif received_packet.ack_number == self.send_first_unacked:
                 if received_packet.size == CONTROL_PACKET_SIZE:
                     # Only non-data packets can be dupacks
-                    retransmit, self.window_size = self.cc.dupack()
+                    retransmit, self.window_size = self.cc.dupack(t)
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|DUPACK|1'.format(t))
                     if retransmit:
@@ -184,7 +184,7 @@ class FlowEnd(object):
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|THROUGHPUT|{}'.format(
                     t, (received_packet.ack_number - self.send_first_unacked) * DATA_PACKET_SIZE))
                 self.send_first_unacked = received_packet.ack_number
-                self.window_size = self.cc.posack()
+                self.window_size = self.cc.posack(t)
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|POSACK|1'.format(t))
                 if self.send_first_unacked > self.last_seq_number:
