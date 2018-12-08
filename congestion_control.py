@@ -75,19 +75,18 @@ class Reno(CongestionControl):
         return int(self.cwnd)
     
     def dupack(self, t):
-        # If slow start, do nothing
-        if self.cwnd >= self.ssthresh:
-            if self.fast_recovery:  # FR/FR
-                # For each additional dupack, inflate window
-                self.cwnd += 1
-            else:  # CA
-                self.n_dupacks += 1
-                if self.n_dupacks == 3: # Enter FR/FR
-                    self.fast_recovery = True
-                    self.ssthresh = max(self.cwnd // 2, 2)
-                    self.em.log_it('FLOW|{}'.format(self.flow_i), 'T|{}|SSTHRESH|{}'.format(t, self.ssthresh))
-                    self.cwnd = self.ssthresh + 3
-                    return True, self.cwnd        
+        if self.fast_recovery:  # FR/FR
+            # For each additional dupack, inflate window
+            self.cwnd += 1
+        else:  # SS or CA
+            self.n_dupacks += 1
+            if self.n_dupacks == 3: # Enter FR/FR
+                self.n_dupacks = 0
+                self.fast_recovery = True
+                self.ssthresh = max(self.cwnd // 2, 2)
+                self.em.log_it('FLOW|{}'.format(self.flow_i), 'T|{}|SSTHRESH|{}'.format(t, self.ssthresh))
+                self.cwnd = self.ssthresh + 3
+                return True, self.cwnd        
         return False, self.cwnd
     
     def ack_timeout(self, t):
