@@ -113,6 +113,15 @@ class FAST(CongestionControl):
     def get_int_cwnd(self):
         pass
 
+    def posack(self):
+        pass
+
+    def dupack(self):
+        pass
+
+    def ack_timeout(self):
+        pass
+
         
 
 

@@ -1,6 +1,7 @@
 DATA_PACKET_SIZE = 8192
 CONTROL_PACKET_SIZE = 512
 
+
 class Packet(object):
     def __init__(self, i, flow, sender, receiver, syn_flag, ack_flag, fin_flag,
                  seq_number, ack_number, size):
