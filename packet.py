@@ -50,9 +50,3 @@ class LinkStatePacket(object):
     def __str__(self):
         return "(id: {}, sender: {}, data: {})" \
             .format(self.i, self.sender.i, self.data)
-
-    def __eq__(self, other):
-        return self.i == other.i
-
-    def __hash__(self):
-        return hash(self.i)
