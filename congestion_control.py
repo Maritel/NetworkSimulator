@@ -50,13 +50,14 @@ class Reno(CongestionControl):
     def __init__(self, debug=True):
         self.cwnd = 1
         self.ssthresh = float('inf')
-        self.ca_n_posacks = 0       # In CA, num posacks in a row
         self.n_dupacks = 0          # Number of dupacks in a row
         self.fast_recovery = False  # Whether we're in fast recovery mode
     
     def initial_cwnd(self):
         return 1
 
+    def get_int_cwnd(self):
+        return 1 if self.cwnd < 1 else int(round(self.cwnd))
 
     def posack(self):
         self.n_dupacks = 0
@@ -65,21 +66,17 @@ class Reno(CongestionControl):
             self.fast_recovery = False
             self.cwnd = self.ssthresh
         
-        if self.cwnd < self.ssthresh: # Slow start
+        if self.cwnd < self.ssthresh: # Slow start; window *= 2 each RTT
             self.cwnd += 1
-        else: # Congestion avoidance
-            self.ca_n_posacks += 1
-            if self.ca_n_posacks == self.cwnd:
-                self.cwnd += 1
-                self.ca_n_posacks = 0
+        else: # Congestion avoidance; attempt window += 1 every RTT
+            self.cwnd += 1 / self.cwnd
         
-        return self.cwnd
+        return self.get_int_cwnd()
     
     def dupack(self):
         self.n_dupacks += 1
 
-        if not(self.fast_recovery) and self.n_dupacks == 3: # Enter FR/FR
-            self.ca_n_posacks = 0
+        if not self.fast_recovery and self.n_dupacks == 3: # Enter FR/FR
             self.fast_recovery = True
             self.ssthresh = max(self.cwnd // 2, 2)
             self.cwnd = self.ssthresh + 3
@@ -89,16 +86,15 @@ class Reno(CongestionControl):
             # For each additional dupack, inflate window
             self.cwnd += 1
         
-        return False, self.cwnd
+        return False, self.get_int_cwnd()
     
     def ack_timeout(self):
-        self.ca_n_posacks = 0
         self.n_dupacks = 0
         self.fast_recovery = False
 
         self.ssthresh = max(self.cwnd // 2, 2)
         self.cwnd = 1
-        return self.cwnd
+        return self.get_int_cwnd()
         
 
 
