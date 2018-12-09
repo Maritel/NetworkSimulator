@@ -39,9 +39,9 @@ class FlowEnd(object):
 
         self.receive_iss = None  # seq# of Syn packet that counterparty sends
 
-        # seq# of the first packet I haven't received. Under normal operation,
-        # this won't increase except by 1.
+        # seq# of the first packet I haven't received
         self.receive_next = None
+        self.received_seqs = set()  # Set of received sequence numbers
 
         # Timeouts that are relevant to me. Also remembers outstanding packets.
         # Map of (Seq # -> AckTimeout event for that Seq#)
@@ -250,12 +250,12 @@ class FlowEnd(object):
 
         else:  # We're established. A response is required if Syn or data.
             if received_packet.syn_flag or received_packet.size >= 513:
-                if received_packet.syn_flag:
+                if received_packet.syn_flag:  # Set initial sequence number
                     self.receive_iss = received_packet.seq_number
-                    if self.receive_next is None:
-                        self.receive_next = self.receive_iss + 1
-                elif received_packet.seq_number == self.receive_next:
-                    # Precise equality is required for this increment.
+                    self.receive_next = self.receive_iss
+                # Update receive_next
+                self.received_seqs.add(received_packet.seq_number)
+                while self.receive_next in self.received_seqs:
                     self.receive_next += 1
 
                 response_packet = \
