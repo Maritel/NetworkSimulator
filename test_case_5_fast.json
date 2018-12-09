@@ -58,7 +58,7 @@
             "destination": "H5",
             "amount": 400e6,
             "start_delay": 0.5,
-            "congestion_control": "Reno"
+            "congestion_control": "FAST"
         },
         {
             "id": "F2",
@@ -66,7 +66,7 @@
             "destination": "H5",
             "amount": 240e6,
             "start_delay": 15,
-            "congestion_control": "Reno"
+            "congestion_control": "FAST"
         },
         {
             "id": "F3",
@@ -74,7 +74,7 @@
             "destination": "H5",
             "amount": 240e6,
             "start_delay": 15,
-            "congestion_control": "Reno"
+            "congestion_control": "FAST"
         },
         {
             "id": "F4",
@@ -82,7 +82,7 @@
             "destination": "H5",
             "amount": 240e6,
             "start_delay": 15,
-            "congestion_control": "Reno"
+            "congestion_control": "FAST"
         }
     ]
 }

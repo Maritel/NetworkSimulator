@@ -8,6 +8,11 @@ class CongestionControl(ABC):
     def initial_cwnd(self):
         """Return the initial cwnd"""
         pass
+
+    @abstractmethod
+    def get_int_cwnd(self):
+        """Return a usable cwnd"""
+        pass
     
     @abstractmethod
     def posack(self):
@@ -95,6 +100,19 @@ class Reno(CongestionControl):
         self.ssthresh = max(self.cwnd // 2, 2)
         self.cwnd = 1
         return self.get_int_cwnd()
+
+
+class FAST(CongestionControl):
+
+    def __init__(self):
+        pass
+
+    def initial_cwnd(self):
+        pass
+
+    def get_int_cwnd(self):
+        pass
+
         
 
 

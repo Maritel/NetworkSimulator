@@ -63,10 +63,26 @@
         {
             "id": "F2",
             "source": "H2",
-            "destination": "H4",
-            "amount": 400e6,
-            "start_delay": 1,
-            "congestion_control": "FAST"
+            "destination": "H5",
+            "amount": 240e6,
+            "start_delay": 15,
+            "congestion_control": "Reno"
+        },
+        {
+            "id": "F3",
+            "source": "H3",
+            "destination": "H5",
+            "amount": 240e6,
+            "start_delay": 15,
+            "congestion_control": "Reno"
+        },
+        {
+            "id": "F4",
+            "source": "H4",
+            "destination": "H5",
+            "amount": 240e6,
+            "start_delay": 15,
+            "congestion_control": "Reno"
         }
     ]
 }
