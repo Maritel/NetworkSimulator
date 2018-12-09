@@ -303,11 +303,12 @@ class FlowEnd(object):
         self.send(t, p)
 
     def send(self, t, p):
-        """Send a packet over the wire. Do not do any acknowledgment processing."""
+        # Send without acknowledgement processing.
         self.host.send_packet(t, p)
         # update event manager count b/c no packet enqueue
         ### Per-flow send rate ###
-        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|SEND|{}'.format(t, p.size))
+        self.em.log_it('FLOW|{}'.format(self.i),
+                       'T|{}|SEND|{}'.format(t, p.size))
 
     def clear_redundant_timeouts(self, first_unacked_number):
         invalidated_seq_numbers = []
@@ -321,6 +322,12 @@ class FlowEnd(object):
 
     def __str__(self):
         return "{}/{}".format(self.i, self.host.i)
+
+    def __eq__(self, other):
+        return self.i == other.i if isinstance(other, FlowEnd) else False
+
+    def __hash__(self):
+        return hash(self.i)
 
 
 class FlowEndAct(Event):
@@ -385,3 +392,9 @@ class Flow(object):
     def get_packet_id(self):
         # Generates unique packet ids. Debugging purposes only.
         return self.i + str(self.get_counter())
+
+    def __eq__(self, other):
+        return self.i == other.i if isinstance(other, Flow) else False
+
+    def __hash__(self):
+        return hash(self.i)

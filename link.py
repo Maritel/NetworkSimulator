@@ -20,9 +20,6 @@ class Link(object):
         self.buffer_capacity = buffer_capacity  # bits
 
         self.interval_usage = 0 #total buffer usage since last linkstate req
-
-    def __hash__(self):
-        return hash(self.i)
         
     def set_usable(self, usable_status):
         #  can simulate a physical link cut
@@ -82,7 +79,10 @@ class Link(object):
         return "{} ({} -> {})".format(self.i, self.source.i, self.dest.i)
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        return self.i == other.i if isinstance(other, Link) else False
+
+    def __hash__(self):
+        return hash(self.i)
 
 
 class LinkBufferRelease(Event):

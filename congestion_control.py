@@ -43,6 +43,7 @@ class StopAndWait(CongestionControl):
     def ack_timeout(self):
         return 1
 
+
 class Reno(CongestionControl):
     # https://www.ietf.org/rfc/rfc2581.txt
     
@@ -55,7 +56,8 @@ class Reno(CongestionControl):
     
     def initial_cwnd(self):
         return 1
-    
+
+
     def posack(self):
         self.n_dupacks = 0
 
