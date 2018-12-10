@@ -8,6 +8,11 @@ class CongestionControl(ABC):
     def initial_cwnd(self):
         """Return the initial cwnd"""
         pass
+
+    @abstractmethod
+    def get_int_cwnd(self):
+        """Return a usable cwnd"""
+        pass
     
     @abstractmethod
     def posack(self, t):
@@ -43,6 +48,7 @@ class StopAndWait(CongestionControl):
     def ack_timeout(self, t):
         return 1
 
+
 class Reno(CongestionControl):
     # https://www.ietf.org/rfc/rfc2581.txt
     
@@ -58,7 +64,7 @@ class Reno(CongestionControl):
     
     def initial_cwnd(self):
         return 1
-    
+
     def posack(self, t):
         self.n_dupacks = 0
 
@@ -97,7 +103,29 @@ class Reno(CongestionControl):
         self.ssthresh = max(self.cwnd // 2, 2)
         self.em.log_it('FLOW|{}'.format(self.flow_i), 'T|{}|SSTHRESH|{}'.format(t, self.ssthresh))
         self.cwnd = 1
-        return self.cwnd
+        return self.get_int_cwnd()
+
+
+class FAST(CongestionControl):
+
+    def __init__(self):
+        pass
+
+    def initial_cwnd(self):
+        pass
+
+    def get_int_cwnd(self):
+        pass
+
+    def posack(self):
+        pass
+
+    def dupack(self):
+        pass
+
+    def ack_timeout(self):
+        pass
+
         
 
 

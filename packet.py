@@ -1,6 +1,7 @@
 DATA_PACKET_SIZE = 8192
 CONTROL_PACKET_SIZE = 512
 
+
 class Packet(object):
     def __init__(self, i, flow, sender, receiver, syn_flag, ack_flag, fin_flag,
                  seq_number, ack_number, size):
@@ -30,7 +31,13 @@ class Packet(object):
                     self.size)
     
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        if isinstance(other, Packet):
+            return self.i == other.i and self.flow == other.flow and \
+                   self.seq_number == other.seq_number and \
+                   self.ack_number == other.ack_number
+        else:
+            return False
+
 
 class LinkStatePacket(object):
     def __init__(self, i, sender, data):
@@ -44,6 +51,3 @@ class LinkStatePacket(object):
     def __str__(self):
         return "(id: {}, sender: {}, data: {})" \
             .format(self.i, self.sender.i, self.data)
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__

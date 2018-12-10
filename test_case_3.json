@@ -1,0 +1,34 @@
+{
+    "hosts": [
+        {"id": "H1"},
+        {"id": "H2"}
+    ],
+    "links": [
+        {
+            "id": "L1",
+            "end_a": "H1",
+            "end_b": "H2",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        }
+    ],
+    "flows": [
+        {
+            "id": "F1",
+            "source": "H1",
+            "destination": "H2",
+            "amount": 320e6,
+            "start_delay": 1.0,
+            "congestion_control": "Reno"
+        },
+        {
+            "id": "F2",
+            "source": "H2",
+            "destination": "H1",
+            "amount": 320e6,
+            "start_delay": 1.0,
+            "congestion_control": "FAST"
+        }
+    ]
+}

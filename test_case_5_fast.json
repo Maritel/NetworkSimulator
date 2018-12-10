@@ -1,0 +1,88 @@
+{
+    "hosts": [
+        {"id": "H1"},
+        {"id": "H2"},
+        {"id": "H3"},
+        {"id": "H4"},
+        {"id": "H5"}
+    ],
+    "routers": [
+        {"id": "R1"}
+    ],
+    "links": [
+        {
+            "id": "L1",
+            "end_a": "H1",
+            "end_b": "R1",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L2",
+            "end_a": "H2",
+            "end_b": "R1",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L3",
+            "end_a": "H3",
+            "end_b": "R1",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L4",
+            "end_a": "H4",
+            "end_b": "R1",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        },
+        {
+            "id": "L5",
+            "end_a": "R1",
+            "end_b": "H5",
+            "rate": 10e6,
+            "delay": 10e-3,
+            "buffer_size": 512e3
+        }
+    ],
+    "flows": [
+        {
+            "id": "F1",
+            "source": "H1",
+            "destination": "H5",
+            "amount": 400e6,
+            "start_delay": 0.5,
+            "congestion_control": "FAST"
+        },
+        {
+            "id": "F2",
+            "source": "H2",
+            "destination": "H5",
+            "amount": 240e6,
+            "start_delay": 15,
+            "congestion_control": "FAST"
+        },
+        {
+            "id": "F3",
+            "source": "H3",
+            "destination": "H5",
+            "amount": 240e6,
+            "start_delay": 15,
+            "congestion_control": "FAST"
+        },
+        {
+            "id": "F4",
+            "source": "H4",
+            "destination": "H5",
+            "amount": 240e6,
+            "start_delay": 15,
+            "congestion_control": "FAST"
+        }
+    ]
+}

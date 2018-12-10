@@ -46,6 +46,7 @@ class SendLinkState(Event):
     def run(self):
         pass
 
+
 class EventManager(object):
     def __init__(self, logging=True):
         self.event_queue = queue.PriorityQueue()
@@ -92,9 +93,13 @@ class EventManager(object):
                 for router in self.router_list:
                     payload = []
                     for link in self.router_list[router].links:
-                        payload.append((link.dest, link.delay + (link.interval_usage/interval)/link.rate, link))
+                        cong = link.delay + (link.interval_usage / interval) \
+                               / link.rate
+                        payload.append((link.dest, cong, link))
                         link.interval_usage = 0
-                    p = LinkStatePacket("ptmp", self.router_list[router], payload)
+                    p = LinkStatePacket("ptmp",
+                                        self.router_list[router],
+                                        payload)
                     for link in self.router_list[router].links:
                         link.on_packet_entry(self.current_time, p)
             elif ev.is_valid():
@@ -102,8 +107,9 @@ class EventManager(object):
 
     def initialize_log(self):
         if self.logging:
-            self.log = open('log_{}.txt'.format(int(time.time())), 'w')
-
+            log_file = 'log_{}.txt'.format(int(time.time()))
+            self.log = open(log_file, 'w')
+            print("Logging to {}".format(log_file))
             curr = str(datetime.datetime.now())
             print('-' * 8, curr, '-' * 8, file=self.log)
             print('-' * 8, 'BEGIN RUN', '-' * 8, file=self.log)

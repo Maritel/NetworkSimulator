@@ -18,7 +18,7 @@ class MockFlow:
     def __init__(self, i):
         self.i = i
 
-em = EventManager()
+em = EventManager(logging=False)
 h1 = MockHost('H1')
 h2 = MockHost('H2')
 f = MockFlow('F')

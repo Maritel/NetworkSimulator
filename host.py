@@ -1,5 +1,6 @@
 from packet import Packet, LinkStatePacket
 
+
 class Host(object):
     def __init__(self, event_manager, i, debug=True):
         self.em = event_manager
@@ -17,27 +18,28 @@ class Host(object):
             return
         
         assert p.receiver == self
-        assert p.flow.src_host == self or p.flow.dst_host == self
+        # assert p.flow.src_host == self or p.flow.dst_host == self
 
         if p.flow.src_host == self:
             p.flow.src.on_reception(t, p)
         else:
             p.flow.dst.on_reception(t, p)
 
-
-        ### Per-host receive rate ###
-        self.em.log_it('HOST|{}'.format(self.i), 'T|{}|RCVE|{}'.format(t, p.size))
+        # Per-host receive rate #
+        self.em.log_it('HOST|{}'.format(self.i), 'T|{}|RCVE|{}'.
+                       format(t, p.size))
 
     def send_packet(self, t, response_packet):
         self.link.on_packet_entry(t, response_packet)
-        ### Per-host send rate ###
-        self.em.log_it('HOST|{}'.format(self.i), 'T|{}|SEND|{}'.format(t, response_packet.size))
+        # Per-host send rate #
+        self.em.log_it('HOST|{}'.format(self.i), 'T|{}|SEND|{}'.
+                       format(t, response_packet.size))
 
     def __hash__(self):
         return hash(self.i)
     
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        return self.i == other.i if isinstance(other, Host) else False
 
     def __str__(self):
         return self.i

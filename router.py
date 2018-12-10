@@ -2,6 +2,7 @@ from queue import PriorityQueue
 from host import Host
 from packet import Packet, LinkStatePacket
 
+
 class Router(object):
     def __init__(self, event_manager, i, table=None, debug=True):
         self.em = event_manager
@@ -16,7 +17,7 @@ class Router(object):
         return hash(self.i)
 
     def __eq__(self, other):
-        return self.i == other.i
+        return self.i == other.i if isinstance(other, Router) else False
 
     def __lt__(self, other):
         return True
@@ -26,7 +27,8 @@ class Router(object):
     
     def add_link(self, link):
         self.links.append(link)
-        self.network[self].append((link.dest, link.delay + link.buffer_usage/link.rate, link))
+        link_price = link.delay + link.buffer_usage / link.rate
+        self.network[self].append((link.dest, link_price, link))
         # update table
         # if contains host then set to host, otherwise copy over new settings
         if type(link.dest) is Host:
@@ -40,7 +42,8 @@ class Router(object):
             print("t={}: {}: {} packet received: {}".
                   format(round(t, 6), self.i, type(p), p))
         if type(p) is LinkStatePacket:
-            if(p.sender in self.network and set(p.data) == set(self.network[p.sender])):
+            if p.sender in self.network and \
+                            set(p.data) == set(self.network[p.sender]):
                 return 
             self.network[p.sender] = p.data
             if self.debug:
@@ -76,11 +79,10 @@ class Router(object):
                     print("routing failed, probably b/c not in table")
 
             if self.debug:
-                print("routed succesfully")
+                print("routed successfully")
         
     def update_table(self):
-        # network defined as dict (key, value) = (router, [(router, cost, link)])
-        N = len(self.network)
+        # network defined as dict (k, v) = (router, [(router, cost, link)])
         
         if self.debug:
             print("-------NETWORK-------")
@@ -90,9 +92,9 @@ class Router(object):
             if self.debug:
                 print("node {}".format(i.i))
             for x in self.network[i]:
-                if(x[2].i == 'L1_a' or x[2].i == 'L3_a'):
+                if x[2].i == 'L1_a' or x[2].i == 'L3_a':
                     comp1 += x[1]
-                if(x[2].i == 'L2_a' or x[2].i == 'L4_a'):
+                if x[2].i == 'L2_a' or x[2].i == 'L4_a':
                     comp2 += x[1]
             if self.debug:
                 print([(x[0].i, x[1]) for x in self.network[i]])
@@ -101,10 +103,10 @@ class Router(object):
             print(comp2)
             print("---------------------")
         
-        dist = {self: 0} #not in dist = inf
-        child = {self: []} #children of certain router
+        dist = {self: 0}  # not in dist = inf
+        child = {self: []}  # children of certain router
         vis = {self}
-        pq = PriorityQueue() #holds (dist, (start, end, link))
+        pq = PriorityQueue()  # holds (dist, (start, end, link))
         assert(pq.empty())
 
         for router in self.network[self]:
@@ -133,15 +135,15 @@ class Router(object):
         """
         seen = set([])
         
-        def dfsUpdate(n, base):
-            if(n not in child):
+        def dfs_update(n, base):
+            if n not in child:
                 return
             for i in child[n]:
                 if i[0] not in seen:
                     seen.add(i[0])
                     self.table[i[0]] = base
-                    dfsUpdate(i[0], base)
+                    dfs_update(i[0], base)
 
-        for nxtRt in child[self]:
-            self.table[nxtRt[0]] = nxtRt[1]
-            dfsUpdate(nxtRt[0], nxtRt[1])
+        for next_route in child[self]:
+            self.table[next_route[0]] = next_route[1]
+            dfs_update(next_route[0], next_route[1])
