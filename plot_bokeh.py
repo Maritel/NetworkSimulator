@@ -131,9 +131,13 @@ def main():
         flow_window_data = flow_data[flow]['WINDOW']
         x, y = zip(*flow_window_data)
         f.step(x, y, color='blue', mode='after', legend='Window')
+        if 'SSTHRESH' in flow_data[flow]:
+            x, y = zip(*flow_data[flow]['SSTHRESH'])
+            f.step(x, y, color='red', mode='after', legend='ssthresh')
         flow_ack_timeout_data = flow_data[flow].get('ACKTIMEOUT', [])
         for t, _ in flow_ack_timeout_data:
             f.add_layout(Span(location=t, dimension='height', line_color='black', line_dash='dashed'))
+        f.legend.click_policy="hide"
         flow_figs.append(f)
 
         f = figure(

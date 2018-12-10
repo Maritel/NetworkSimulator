@@ -39,9 +39,9 @@ class FlowEnd(object):
 
         self.receive_iss = None  # seq# of Syn packet that counterparty sends
 
-        # seq# of the first packet I haven't received. Under normal operation,
-        # this won't increase except by 1.
+        # seq# of the first packet I haven't received
         self.receive_next = None
+        self.received_seqs = set()  # Set of received sequence numbers
 
         # Timeouts that are relevant to me. Also remembers outstanding packets.
         # Map of (Seq # -> AckTimeout event for that Seq#)
@@ -141,23 +141,15 @@ class FlowEnd(object):
         # We want to retransmit the first unacknowledged packet. Usually, this
         # should be the packet with #seq_number.
         assert self.send_first_unacked <= seq_number
-        self.send_next = self.send_first_unacked
 
         # Ack timeout
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|ACKTIMEOUT|1'.format(t))
 
         # ADJUST SETTINGS
-        self.window_size = self.cc.ack_timeout()
+        self.window_size = self.cc.ack_timeout(t)
         self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
 
-        # Clear all ack timeout events, because we're starting from the first
-        # unacknowledged packet anyway.
-        for _, event in self.ack_timeout_events.items():
-            event.invalidate()
-        self.ack_timeout_events.clear()
-
-        self.act(t)
-        pass
+        self.retransmit(t)
 
     def on_reception(self, t, received_packet):
         assert received_packet.receiver == self.host
@@ -183,21 +175,29 @@ class FlowEnd(object):
             elif received_packet.ack_number == self.send_first_unacked:
                 if received_packet.size == CONTROL_PACKET_SIZE:
                     # Only non-data packets can be dupacks
-                    retransmit, self.window_size = self.cc.dupack()
+                    retransmit, self.window_size = self.cc.dupack(t)
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
                     self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|DUPACK|1'.format(t))
                     if retransmit:
-                        # Clear all ack timeout events, because we're starting
-                        # from the first unacknowledged packet anyway.
-                        for _, event in self.ack_timeout_events.items():
-                            event.invalidate()
-                        self.ack_timeout_events.clear()
+                        old_next = self.send_next
+                        old_window_size = self.window_size
+                        # Retransmit the lost packet (which is the first unacked packet)
+                        # Subtle: invalidate its old ack timeout
                         self.send_next = self.send_first_unacked
+                        self.window_size = 1
+                        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
+                        self.ack_timeout_events[self.send_first_unacked].invalidate()
+                        self.act(t)
+                        # Restore previous state
+                        self.send_next = old_next
+                        self.window_size = old_window_size
+                        self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
+                        self.act(t)
             else:
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|THROUGHPUT|{}'.format(
                     t, (received_packet.ack_number - self.send_first_unacked) * DATA_PACKET_SIZE))
                 self.send_first_unacked = received_packet.ack_number
-                self.window_size = self.cc.posack()
+                self.window_size = self.cc.posack(t)
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|WINDOW|{}'.format(t, self.window_size))
                 self.em.log_it('FLOW|{}'.format(self.i), 'T|{}|POSACK|1'.format(t))
                 if self.send_first_unacked > self.last_seq_number:
@@ -250,12 +250,12 @@ class FlowEnd(object):
 
         else:  # We're established. A response is required if Syn or data.
             if received_packet.syn_flag or received_packet.size >= 513:
-                if received_packet.syn_flag:
+                if received_packet.syn_flag:  # Set initial sequence number
                     self.receive_iss = received_packet.seq_number
-                    if self.receive_next is None:
-                        self.receive_next = self.receive_iss + 1
-                elif received_packet.seq_number == self.receive_next:
-                    # Precise equality is required for this increment.
+                    self.receive_next = self.receive_iss
+                # Update receive_next
+                self.received_seqs.add(received_packet.seq_number)
+                while self.receive_next in self.received_seqs:
                     self.receive_next += 1
 
                 response_packet = \
@@ -278,6 +278,20 @@ class FlowEnd(object):
                           .format(round(t, 6), self, response_packet))
 
             self.act(t)  # May want to send data here.
+
+    def retransmit(self, t):
+        """Assuming the window size has been set correctly, retransmit from the
+        first unacknowledged packet."""
+        self.send_next = self.send_first_unacked
+        
+        # Clear all ack timeout events, because we're starting from the first
+        # unacknowledged packet anyway.
+        for _, event in self.ack_timeout_events.items():
+            event.invalidate()
+        self.ack_timeout_events.clear()
+
+        self.act(t)
+
 
     def send_acknowledgeable_packet(self, t, p):
         """Send an acknowledgeable packet. Update state such as send_next."""
